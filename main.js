@@ -1,442 +1,45 @@
 /**
- * 《時光書境守護者》最終完整版總控制器 (main.js)
- * 整合：
- * 1. 智慧題目佇列 (已作答題目排至隊尾，避免重複)
- * 2. 特別技能回合冷卻機制 (Cooldown: 2~4回合)
- * 3. 怪物血量強化與升級曲線平衡 (告別秒殺與過快升級)
- * 4. 8-bit 探索/戰鬥背景音樂 (BGM) 自動切換
- * 5. 移除地圖十字鍵 (純點擊地圖移動)、全螢幕模式、安裝 App 與強制清除快取更新
+ * 《時光書境守護者》模組化核心控制器 (main.js)
+ * 配合 src/data/enemies.js、src/data/items.js、src/data/questions.js 運行
  */
-import { QuestionBank, normalizeQuestion, SubjectMeta } from './src/data/questions.js';
+import { QuestionBank, normalizeQuestion } from './src/data/questions.js';
 import { AudioSystem } from './src/systems/audio.js';
 import { GameState, StateManager, ClassBaseStats } from './src/core/state.js';
-import { MaterialsCatalog, EquipmentCatalog, PotionsCatalog } from './src/data/items.js';
+import { MaterialsCatalog, EquipmentCatalog, PotionsCatalog, ClassNamesMap } from './src/data/items.js';
+import { getSpriteDataURL, drawMatrixOnCtx, CLASS_SKILL_TREES, STAGES, drawRichEnvironment } from './src/data/enemies.js';
 
 const ALL_DEFAULT_UNITS = ['成語一', '成語二', '字詞一', '字詞三', '字詞五', '字詞六'];
-
-/* ==========================================================================
-   1. 點陣像素圖庫 (26種怪物 + 4大職業 + 武器護具鎖頭)
-   ========================================================================== */
-const PALETTE = {
-    '.': null,
-    'k': '#141013', 'w': '#ffffff', 's': '#ffccaa',
-    'r': '#d32f2f', 'R': '#ff6659', 'g': '#388e3c', 'G': '#81c784',
-    'b': '#1976d2', 'B': '#4fc3f7', 'y': '#fbc02d', 'Y': '#fff176',
-    'p': '#7b1fa2', 'P': '#ce93d8', 'n': '#8d6e63', 'N': '#5d4037',
-    'c': '#bdbdbd', 'o': '#e65100'
-};
-
-const SPRITES = {
-    hero_warrior: [
-        "...kkkkkk...","..kyyyyyyk..","..kybbbbbyk.","..kbsksksbk.",
-        "...kbbbbbk.c","..kybbbbbykc","..kbbbbbbbcc","..kbyyyyybkc",
-        "...kbbbbbk.n","...kbb.bbk..","...kN...Nk..","...kk...kk.."
-    ],
-    hero_mage: [
-        "....kkkk....","...kwwwwk...","..kwwwwwwk..","..kwssskwk..",
-        "..kskskss...","...krrrrk..R","..krrrrrrk.y","..kryyyyrrkn",
-        "..krrrrrrk.n","...krrrrk..n","...kN..Nk..n","...kk...kk..."
-    ],
-    hero_ranger: [
-        "....kkkk....","...kggggk...","..kgGGGGgk..","..kgssskgk.n",
-        "..kskskss..n","...kggggk.wn","..kgGGGGgkwn","..kgnnnngk.n",
-        "...kggggk...","...kN..Nk...","...kk..kk...","............"
-    ],
-    hero_cleric: [
-        "....kkkk....","...kyyyyk...","..kwyyyywk..","..kwssskwk..",
-        "..kskskss..y","...kwwwwk.yY","..kwyyyywk.n","..kwwwwwwk.n",
-        "..kwwwwwwk..","...kwwwwk...","...kN..Nk...","...kk..kk..."
-    ],
-    smith_bear: [
-        "..kkk..kkk..",".kwwwkkwwwk.",".kwwwwwwwwk.","kwwkwwwwkwwk",
-        "kwwwwkkwwwwk",".kwwwwwwwwk.","..krrrrrrk..",".krrrrrrrrk.",
-        ".knnnnnnnnk.","..kN....Nk..","..kk....kk..","............"
-    ],
-    slime_ink: [
-        ".....kk.....","....kbbk....","...kbBBbk...","..kbBBBBbk..",
-        ".kbBwkBwbBk.","kbBBkkkkBBbk","kbBBBBBBBBbk","kbbbbbbbbbbk",
-        ".kkkkkkkkkk.","............","............","............"
-    ],
-    sprite_paper: [
-        ".........kk.",".......kwwk.",".....kwwwwk.","...kwwwwwwk.",
-        ".kwwwwwwwwk.","kwwwwwwwwwk.",".kkkkkwwwwk.","....kwwwwwk.",
-        "....kwk.kwk.","....kk...kk.","............","............"
-    ],
-    turtle_dict: [
-        "....kkkkkk..","...kyyyyyyk.","..knwwwwwwnk",".knnnnnnnnnk",
-        "ggggkggggk..","gkgkggggggk.","ggggkggggggk","..kkkkkkkkk.",
-        "..kgg...ggk.","..kkk...kkk.","............","............"
-    ],
-    bat_book: [
-        ".kk......kk.","kppk.kk.kppk","kpppkkkkpppk","kppppppppppk",
-        ".kppwkwwkppk","..kppppppppk","...kppppppk.","....kppppk..",
-        "....k.k.k...","............","............","............"
-    ],
-    bird_clock: [
-        "....kkkk....","...koooYk...","..kowkook...","yykoooookkk.",
-        ".kkooooyyyok","...kooyyook.","...kooooook.","....k.k..k..",
-        "...kk.kk....","............","............","............"
-    ],
-    guard_terra: [
-        "....kkkk....","...knooonk..","..knooooonk.","..kokookok.c",
-        "...koooook.c","..knnnnnnnkc","..knooooonkn","..knnnnnnnkn",
-        "...koooook.n","...ko..ok...","...kN..Nk...","...kk..kk..."
-    ],
-    ghost_scholar: [
-        "....kkkk....","..kkBBBBkk..",".kBBBBBBBBk.",".kBBkBBkBBk.",
-        ".kBBBBBBBBk.",".kBwwwwwwBk.",".kBBBBBBBBk.","..kBBBBBBk..",
-        "..kB.kB.kB..","..k..k..k...","............","............"
-    ],
-    lizard_sand: [
-        "....kkkk....","...kggggk...","..kgGkkGgk..","..kggggggk..",
-        ".kggggggggk.","..kggggggk.y","..kggggggk.n","..kggggggggk",
-        "...kgg.ggk..","...kN...Nk..","...kk...kk..","............"
-    ],
-    goblin_tube: [
-        "....kkkk....","...kggggk...","..kgBBBBgk..","..kggggggk.B",
-        "...kggggk.wR","..knnnnnnkwr","..knggggngkw","...knnnnnk..",
-        "...kgg.ggk..","...kN...Nk..","...kk...kk..","............"
-    ],
-    golem_magnet: [
-        "..kkkkkkkk..",".krRRRRRRbk.",".krRkkkkBbk.",".krRkYYkBbk.",
-        "kcccccccccck","kcrrrrrrrrck","kcbbbbbbbbck",".kcccccccck.",
-        "..kcc..cck..","..krr..bbk..","..kkk..kkk..","............"
-    ],
-    slime_elec: [
-        " ..kkkkkk.. "," .kyYYYYyk. ",".kyYYYYYYyk.","kyYwkYYkwYyk",
-        "kyYYYYYYYYyk","kyYYkkkkYYyk",".kyYYYYYYyk."," .kkkkkkkk. ",
-        "............","............","............","............"
-    ],
-    witch: [
-        ".....kk.....","....kppk....","...kppppk...",".kkppppppkk.",
-        "kppppppppppk","...kssssk...","...ksksks...","..kppppppk..",
-        "..kpPPPPpk..",".kppppppppk.",".kppppppppk.","..kkkkkkkk.."
-    ],
-    skeleton: [
-        "....kkkk....","...kwwwwk...","..kwkkkkwk..","..kwwwwwwk..",
-        "...kckckc...","..kkkkkkkk..",".kc.kwwk.ck.",".k..kwwk..k.",
-        "....kcck....","...kc..ck...","...kw..wk...","...kk..wk..."
-    ],
-    scorpion: [
-        ".......kkk..","......koook.","........kook",".kkk....kook",
-        "koook..koook","koookkkkkook",".koooooooook","..kooooooook",
-        "..kN.kN.kN.k",".kN..kN.kN..","............","............"
-    ],
-    tentacle: [
-        ".....kk.....","....kppk....","...kpPPpk...","...kppppk...",
-        "..kpPppppk..","..kppppppk..","...kppppk...","...kpPPpk...",
-        "..kppppppk..",".kppppppppk.",".kBBBBBBBBk.","..kkkkkkkk.."
-    ],
-    boss_omega: [
-        "...kkkkkk...","..kppppppk..",".kpBBBBBBpk.","kpBwwkkwwBpk",
-        "kpBwkrrkwBpk","kpBwwkkwwBpk",".kpBBBBBBpk.","..kppppppk..",
-        ".kcc.kk.cck.",".kc......ck.","............","............"
-    ],
-    golem_lava: [
-        "..kkkkkkkk..",".kNrooooorNk",".kNoYYYYoNk.",".kNokYYkoNk.",
-        "kNrooooooorNk","kroYYYYYYork","kroooooooork",".kNrrrrrrNk.",
-        "..kNr..rNk..","..krr..rrk..","..kkk..kkk..","............"
-    ],
-    drake_fire: [
-        "..kk....kk..",".krrk..krrk.","..krrrrrrk..","..krYkrYrk..",
-        ".krrrrrrrrk.","krrrooooorrk","krrroYYoorrk",".krrrrrrrrk.",
-        "..krr..rrk..","..kN....Nk..","..kk....kk..","............"
-    ],
-    bomb_barrel: [
-        ".....yY.....","....rRRr....","..kkkkkkkk..",".knnnnnnnnk.",
-        ".kcccccccck.",".knnrRRrnnk.",".knnRRRRnnk.",".knnrRRrnnk.",
-        ".kcccccccck.",".knnnnnnnnk.","..kkkkkkkk..","............"
-    ],
-    yeti_frost: [
-        "..kkkkkkkk..",".kwwwwwwwwk.",".kwBBBBBBwk.",".kwBkkkkBwk.",
-        "kwwwwwwwwwwk","kwBBBBBBBBwk","kwwwwwwwwwwk",".kwwwwwwwwk.",
-        "..kww..wwk..","..kBB..BBk..","..kkk..kkk..","............"
-    ],
-    wolf_ice: [
-        ".kk....kk...","kBBk..kBBk..","kBBBBBBBBk..","kBwkBBkwBk..",
-        ".kBBBBBBBBkk","..kBBBBBBBBk","..kBBBBBBBBk","..kBB...BBk.",
-        "..kB....Bk..","..kk....kk..","............","............"
-    ],
-    owl_star: [
-        "..kk....kk..",".kppk..kppk.",".kppppppppk.",".kpYwkwwYpk.",
-        "kppppoyopppk","kpppPPPPpppk","kppPYppYPppk",".kppppppppk.",
-        "..kpp..ppk..","...ky..yk...","............","............"
-    ],
-    eye_void: [
-        "...kkkkkk...","..kppppppk..",".kpPPPPPPpk.","kpPwwwwwwPpk",
-        "kpPwkrRkwPpk","kpPwkrRkwPpk","kpPwwwwwwPpk",".kpPPPPPPpk.",
-        "..kppppppk..","..kp.kp.kp..","............","............"
-    ],
-    tome_evil: [
-        "..kkkkkkkk..",".krrrrrrrrk.",".krYYYYYYrk.",".krYkkkkYrk.",
-        ".krYkRRkYrk.",".krYYYYYYrk.",".krrrrrrrrk.",".kwwwwwwwwk.",
-        "..kkkkkkkk..","....p..p....","............","............"
-    ],
-    knight_void: [
-        "...kkkkkk...","..kppppppk..","..kpRRRRpk..","...kppppk..P",
-        "..kcccccck.p","..kcppppck.p","..kcccccck.p","...kppppk..n",
-        "...kpp.ppk..","...kk...kk..","............","............"
-    ],
-    boss_void_king: [
-        ".k..kkkk..k.","kykkyyyyykyk","kyyyyyyyyyyk",".kppppppppk.",
-        "kpPwkRRkwPpk","kppppppppppk","kppYYYYYYppk","kppppppppppk",
-        ".kppppppppk.","..kp.kp.kp..","..k..k..k...","............"
-    ],
-    icon_fire: [
-        ".....rR.....","...rrRRr....","..rRYYYYRr..",".rRYwwwwYRr.",
-        ".rRYwwwwYRr.","..rRYYYYRr..","...rrRRrr...","....rrrr...."
-    ],
-    icon_bow: [
-        "....nnn.....","..nn..wc....",".n....w.c...",".n...w..RY..",
-        ".n..w..RY...",".n.w....c...","..nn...c....","....nnn....."
-    ],
-    icon_dagger: [
-        "........gg..",".......gGGg.","......gcccg.",".....gcccc..",
-        "...nnccc....","..nNnc......",".nN.........","y..........."
-    ],
-    icon_sword: [
-        ".........cc.","........ccc.",".......ccc..","......ccc...",
-        "..y..ccc....","...yycc.....","..nn.y......",".nn........."
-    ],
-    icon_red_pot: [
-        "....nnnn....","....wwww....","...wrrrrw...","..wrrRRrrw..",
-        "..wrrrrrrw..","..wrrrrrrw..","...wwwwww...","............"
-    ],
-    icon_blue_pot: [
-        "....nnnn....","....wwww....","...wbbbbw...","..wbbBBbbw..",
-        "..wbbbbbbw..","..wbbbbbbw..","...wwwwww...","............"
-    ],
-    icon_scroll: [
-        "..nnnnnnnn..",".nYYYYYYYYn.","..ykkkkkky..","..yYYYYYYy..",
-        "..ykkkkkky..","..yYYYYYYy..",".nYYYYYYYYn.","..nnnnnnnn.."
-    ],
-    icon_armor: [
-        ".nnn....nnn.","nNNNnnnnNNNn","nNNNNNNNNNNn",".nNNyyyyNNn.",
-        ".nNNNNNNNNn.",".nNNNNNNNNn.","..nnnnnnnn..","............"
-    ],
-    icon_ring: [
-        "....RRRR....","...RrrrrR...","..yyyyyyyy..",".yy......yy.",
-        ".yy......yy.","..yy....yy..","...yyyyyy...","............"
-    ],
-    icon_shroom: [
-        "...rrrrrr...","..rrwwwwrr..",".rrrrwwrrrr.",".rrwwrrrrww.",
-        "..kkkkkkkk..","....wwww....","....wwww....","....kkkk...."
-    ],
-    icon_lock: [
-        "....kkkk....","...kcccck...","...kc..ck...","..kkkkkkkk..",
-        "..kyyyyyyk..","..kyykkyyk..","..kyykkyyk..","..kkkkkkkk.."
-    ]
-};
-
-const SpriteCache = {};
-function getSpriteDataURL(key, scale = 3) {
-    const cacheKey = `${key}_${scale}`;
-    if (SpriteCache[cacheKey]) return SpriteCache[cacheKey];
-    const matrix = SPRITES[key] || SPRITES.icon_fire;
-    const rows = matrix.length;
-    const cols = matrix[0].length;
-    const c = document.createElement('canvas');
-    c.width = cols * scale;
-    c.height = rows * scale;
-    const ctx = c.getContext('2d');
-    for (let r = 0; r < rows; r++) {
-        for (let col = 0; col < cols; col++) {
-            const ch = matrix[r][col];
-            if (PALETTE[ch]) {
-                ctx.fillStyle = PALETTE[ch];
-                ctx.fillRect(col * scale, r * scale, scale, scale);
-            }
-        }
-    }
-    SpriteCache[cacheKey] = c.toDataURL();
-    return SpriteCache[cacheKey];
-}
-
-function drawMatrixOnCtx(ctx, key, x, y, scale = 5) {
-    const matrix = SPRITES[key] || SPRITES.hero_warrior;
-    for (let r = 0; r < matrix.length; r++) {
-        for (let col = 0; col < matrix[r].length; col++) {
-            const ch = matrix[r][col];
-            if (PALETTE[ch]) {
-                ctx.fillStyle = PALETTE[ch];
-                ctx.fillRect(x + col * scale, y + r * scale, scale, scale);
-            }
-        }
-    }
-}
-
-/* ==========================================================================
-   2. 六大章節 (強化怪物血量 1.45 倍，讓戰鬥更具戰略性，不會一兩招就結束)
-   ========================================================================== */
 const REQUIRED_KILLS_FOR_BOSS = 20;
 const GATHER_COOLDOWN_SEC = 30;
 
-const MOB_SLOTS_4 = [
-    [520, 125], [535, 295], [730, 105], [745, 285]
-];
-const BOSS_SLOTS_5 = [
-    [510, 105],
-    [510, 295],
-    [680, 165],
-    [825, 95],
-    [825, 305]
-];
+const MOB_SLOTS_4 = [[520, 125], [535, 295], [730, 105], [745, 285]];
+const BOSS_SLOTS_5 = [[510, 105], [510, 295], [680, 165], [825, 95], [825, 305]];
 
-const STAGES = [
-    {
-        id: 'grassland',
-        title: '🌿 第一章：晨曦微風草原',
-        theme: 'grassland',
-        dropPool: ['fiber', 'dew', 'ink', 'wing', 'page'],
-        bossDrop: 'core_doodle',
-        roamPool: [
-            { name: '墨水史萊姆', sprite: 'slime_ink', hp: 95, maxHp: 95, atk: 16, shield: false, bleed: false, trait: 'split' },
-            { name: '疾風紙飛機', sprite: 'sprite_paper', hp: 86, maxHp: 86, atk: 17, shield: false, bleed: true, trait: 'none' },
-            { name: '暗影書蝠', sprite: 'bat_book', hp: 90, maxHp: 90, atk: 16, shield: false, bleed: true, trait: 'none' },
-            { name: '字典岩龜', sprite: 'turtle_dict', hp: 135, maxHp: 135, atk: 18, shield: true, bleed: false, trait: 'shell' },
-            { name: '荒沼女巫', sprite: 'witch', hp: 118, maxHp: 118, atk: 20, shield: true, bleed: true, trait: 'none' }
-        ],
-        bossParty: [
-            { name: '字典岩龜', sprite: 'turtle_dict', hp: 140, maxHp: 140, atk: 18, shield: true, bleed: false, trait: 'shell' },
-            { name: '墨水史萊姆', sprite: 'slime_ink', hp: 115, maxHp: 115, atk: 16, shield: false, bleed: false, trait: 'split' },
-            { name: '暴走塗鴉魔王', sprite: 'witch', hp: 360, maxHp: 360, atk: 28, shield: true, bleed: true, isBoss: true, trait: 'split' },
-            { name: '疾風紙飛機', sprite: 'sprite_paper', hp: 105, maxHp: 105, atk: 17, shield: false, bleed: true, trait: 'none' },
-            { name: '暗影書蝠', sprite: 'bat_book', hp: 105, maxHp: 105, atk: 17, shield: false, bleed: true, trait: 'none' }
-        ]
-    },
-    {
-        id: 'ruins',
-        title: '⏳ 第二章：時光沙漏遺跡',
-        theme: 'ruins',
-        dropPool: ['feather', 'coin_old', 'gear', 'clay'],
-        bossDrop: 'scale_time',
-        roamPool: [
-            { name: '發條盜賊鳥', sprite: 'bird_clock', hp: 140, maxHp: 140, atk: 22, shield: false, bleed: true, trait: 'steal' },
-            { name: '幽靈歷史學者', sprite: 'ghost_scholar', hp: 155, maxHp: 155, atk: 24, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '荒漠蜥蜴人', sprite: 'lizard_sand', hp: 150, maxHp: 150, atk: 23, shield: false, bleed: true, trait: 'none' },
-            { name: '兵馬俑守衛', sprite: 'guard_terra', hp: 205, maxHp: 205, atk: 26, shield: true, bleed: false, trait: 'shell' },
-            { name: '巨大蠍子', sprite: 'scorpion', hp: 180, maxHp: 180, atk: 25, shield: true, bleed: true, trait: 'none' }
-        ],
-        bossParty: [
-            { name: '兵馬俑守衛', sprite: 'guard_terra', hp: 200, maxHp: 200, atk: 25, shield: true, bleed: false, trait: 'shell' },
-            { name: '荒漠蜥蜴人', sprite: 'lizard_sand', hp: 160, maxHp: 160, atk: 23, shield: false, bleed: true, trait: 'none' },
-            { name: '歲月青銅巨龍', sprite: 'scorpion', hp: 480, maxHp: 480, atk: 34, shield: true, bleed: true, isBoss: true, trait: 'steal' },
-            { name: '幽靈歷史學者', sprite: 'ghost_scholar', hp: 165, maxHp: 165, atk: 24, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '發條盜賊鳥', sprite: 'bird_clock', hp: 150, maxHp: 150, atk: 22, shield: false, bleed: true, trait: 'steal' }
-        ]
-    },
-    {
-        id: 'mine',
-        title: '💎 第三章：幾何水晶礦坑',
-        theme: 'mine',
-        dropPool: ['acid', 'coil', 'elec_core', 'crystal'],
-        bossDrop: 'core_omega',
-        roamPool: [
-            { name: '瘋狂試管地精', sprite: 'goblin_tube', hp: 185, maxHp: 185, atk: 28, shield: false, bleed: true, trait: 'shuffle' },
-            { name: '靜電幾何史萊姆', sprite: 'slime_elec', hp: 180, maxHp: 180, atk: 30, shield: true, bleed: false, trait: 'split' },
-            { name: '骷髏礦工', sprite: 'skeleton', hp: 175, maxHp: 175, atk: 27, shield: true, bleed: false, trait: 'none' },
-            { name: '多面體磁石巨像', sprite: 'golem_magnet', hp: 245, maxHp: 245, atk: 32, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '深淵觸手', sprite: 'tentacle', hp: 195, maxHp: 195, atk: 29, shield: false, bleed: true, trait: 'none' }
-        ],
-        bossParty: [
-            { name: '多面體磁石巨像', sprite: 'golem_magnet', hp: 250, maxHp: 250, atk: 30, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '骷髏礦工', sprite: 'skeleton', hp: 180, maxHp: 180, atk: 27, shield: true, bleed: false, trait: 'none' },
-            { name: '真理機甲・歐米茄', sprite: 'boss_omega', hp: 620, maxHp: 620, atk: 40, shield: true, bleed: true, isBoss: true, trait: 'shuffle' },
-            { name: '靜電幾何史萊姆', sprite: 'slime_elec', hp: 195, maxHp: 195, atk: 29, shield: true, bleed: false, trait: 'split' },
-            { name: '瘋狂試管地精', sprite: 'goblin_tube', hp: 185, maxHp: 185, atk: 28, shield: false, bleed: true, trait: 'shuffle' }
-        ]
-    },
-    {
-        id: 'volcano',
-        title: '🌋 第四章：熔岩煉金火口',
-        theme: 'volcano',
-        dropPool: ['lava_rock', 'ash_powder', 'elec_core', 'acid'],
-        bossDrop: 'core_magma',
-        roamPool: [
-            { name: '熾熱熔岩魔像', sprite: 'golem_lava', hp: 265, maxHp: 265, atk: 36, shield: true, bleed: false, trait: 'shell' },
-            { name: '火蜥蜴戰士', sprite: 'drake_fire', hp: 230, maxHp: 230, atk: 34, shield: false, bleed: true, trait: 'none' },
-            { name: '爆裂火藥桶', sprite: 'bomb_barrel', hp: 205, maxHp: 205, atk: 40, shield: false, bleed: true, trait: 'steal' },
-            { name: '深淵炎魔觸手', sprite: 'tentacle', hp: 235, maxHp: 235, atk: 35, shield: true, bleed: false, trait: 'split' }
-        ],
-        bossParty: [
-            { name: '熾熱熔岩魔像', sprite: 'golem_lava', hp: 275, maxHp: 275, atk: 36, shield: true, bleed: false, trait: 'shell' },
-            { name: '火蜥蜴戰士', sprite: 'drake_fire', hp: 235, maxHp: 235, atk: 34, shield: false, bleed: true, trait: 'none' },
-            { name: '紅蓮業火巨龍', sprite: 'drake_fire', hp: 750, maxHp: 750, atk: 46, shield: true, bleed: true, isBoss: true, trait: 'shell' },
-            { name: '爆裂火藥桶', sprite: 'bomb_barrel', hp: 215, maxHp: 215, atk: 38, shield: false, bleed: true, trait: 'none' },
-            { name: '深淵炎魔觸手', sprite: 'tentacle', hp: 230, maxHp: 230, atk: 35, shield: true, bleed: false, trait: 'split' }
-        ]
-    },
-    {
-        id: 'snowfield',
-        title: '❄️ 第五章：冰封星象雪原',
-        theme: 'snowfield',
-        dropPool: ['ice_shard', 'star_dust', 'crystal', 'feather'],
-        bossDrop: 'core_frost',
-        roamPool: [
-            { name: '冰晶雪怪', sprite: 'yeti_frost', hp: 315, maxHp: 315, atk: 40, shield: true, bleed: false, trait: 'shell' },
-            { name: '極地冰原狼', sprite: 'wolf_ice', hp: 265, maxHp: 265, atk: 42, shield: false, bleed: true, trait: 'steal' },
-            { name: '星象貓頭鷹', sprite: 'owl_star', hp: 280, maxHp: 280, atk: 39, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '寒霜骷髏衛', sprite: 'skeleton', hp: 255, maxHp: 255, atk: 38, shield: true, bleed: true, trait: 'none' }
-        ],
-        bossParty: [
-            { name: '冰晶雪怪', sprite: 'yeti_frost', hp: 330, maxHp: 330, atk: 40, shield: true, bleed: false, trait: 'shell' },
-            { name: '極地冰原狼', sprite: 'wolf_ice', hp: 275, maxHp: 275, atk: 42, shield: false, bleed: true, trait: 'none' },
-            { name: '極光星象冰凰', sprite: 'owl_star', hp: 900, maxHp: 900, atk: 52, shield: true, bleed: true, isBoss: true, trait: 'shuffle' },
-            { name: '星象貓頭鷹', sprite: 'owl_star', hp: 285, maxHp: 285, atk: 39, shield: true, bleed: false, trait: 'shuffle' },
-            { name: '寒霜骷髏衛', sprite: 'skeleton', hp: 265, maxHp: 265, atk: 38, shield: true, bleed: true, trait: 'none' }
-        ]
-    },
-    {
-        id: 'library',
-        title: '🌌 終章：虛空記憶圖書館',
-        theme: 'library',
-        dropPool: ['void_ink', 'rune_origin', 'star_dust', 'lava_rock'],
-        bossDrop: 'rune_origin',
-        roamPool: [
-            { name: '虛空凝視者', sprite: 'eye_void', hp: 350, maxHp: 350, atk: 46, shield: true, bleed: true, trait: 'shuffle' },
-            { name: '噬魂魔導書', sprite: 'tome_evil', hp: 330, maxHp: 330, atk: 48, shield: true, bleed: false, trait: 'split' },
-            { name: '墮落書境騎士', sprite: 'knight_void', hp: 390, maxHp: 390, atk: 50, shield: true, bleed: true, trait: 'shell' }
-        ],
-        bossParty: [
-            { name: '墮落書境騎士', sprite: 'knight_void', hp: 400, maxHp: 400, atk: 48, shield: true, bleed: true, trait: 'shell' },
-            { name: '虛空凝視者', sprite: 'eye_void', hp: 350, maxHp: 350, atk: 46, shield: true, bleed: true, trait: 'shuffle' },
-            { name: '終焉虛空書皇', sprite: 'boss_void_king', hp: 1150, maxHp: 1150, atk: 60, shield: true, bleed: true, isBoss: true, trait: 'shuffle' },
-            { name: '噬魂魔導書', sprite: 'tome_evil', hp: 350, maxHp: 350, atk: 47, shield: true, bleed: false, trait: 'split' },
-            { name: '墮落書境騎士', sprite: 'knight_void', hp: 400, maxHp: 400, atk: 48, shield: true, bleed: true, trait: 'shell' }
-        ]
-    }
-];
+// 紙娃娃 11 個裝備槽對應的空槽壓紋圖示 (還原附圖 2)
+const SLOT_WATERMARKS = {
+    head: 'wm_head',
+    weapon: 'wm_weapon',
+    armor: 'wm_armor',
+    offhand: 'wm_offhand',
+    gloves_l: 'wm_gloves',
+    legs: 'wm_legs',
+    gloves_r: 'wm_gloves',
+    boots: 'wm_boots',
+    neck: 'wm_neck',
+    ring1: 'wm_ring',
+    ring2: 'wm_ring',
+    relic1: 'wm_relic',
+    relic2: 'wm_relic'
+};
 
-// 四大職業技能庫 (新增 cd: 冷卻回合數！第 1 招基礎技 cd:0 保底可用，進階與終極技 cd:2~4 回合)
-const CLASS_SKILLS = [
-    // 🛡️ 重裝劍士 (Warrior)
-    { id: 'w_slash', forClass: 'warrior', name: '重劈斬', cost: 8, dmg: 18, cd: 0, aoe: false, sprite: 'icon_sword', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'fiber', desc: '【無冷卻】揮動武器對單一敵人造成劈砍。' },
-    { id: 'w_wave', forClass: 'warrior', name: '裂地劍氣', cost: 16, dmg: 15, cd: 2, aoe: true, sprite: 'icon_dagger', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'page', desc: '【冷卻2回合】釋放地面劍氣，對全體魔物造成範圍傷害。' },
-    { id: 'w_shield', forClass: 'warrior', name: '聖盾猛擊', cost: 20, dmg: 25, cd: 3, aoe: false, sprite: 'icon_armor', unlocked: false, equipped: false, lv: 1, reqSp: 2, reqMat: 'page', addShield: 1, desc: '【冷卻3回合】重擊敵人並立即獲得 1 層免傷護盾！' },
-    { id: 'w_ult', forClass: 'warrior', name: '精裝書脊斬', cost: 30, dmg: 35, cd: 4, aoe: true, sprite: 'icon_fire', unlocked: false, equipped: false, lv: 1, reqSp: 3, reqMat: 'gear', isMeteor: true, desc: '【冷卻4回合】召喚巨型書脊劍陣轟炸全場敵人！' },
+// 各職業初始專屬 T1 武器
+const INITIAL_CLASS_WEAPON = {
+    warrior: 'wep_wood_sword',
+    mage: 'wep_apprentice_wand',
+    ranger: 'wep_short_bow',
+    cleric: 'wep_oak_mace'
+};
 
-    // 🪄 元素法師 (Mage)
-    { id: 'm_fire', forClass: 'mage', name: '火球術', cost: 10, dmg: 20, cd: 0, aoe: false, sprite: 'icon_fire', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'ink', desc: '【無冷卻】發射烈焰火球攻擊單一目標。' },
-    { id: 'm_ice', forClass: 'mage', name: '冰霜新星', cost: 18, dmg: 16, cd: 2, aoe: true, sprite: 'icon_blue_pot', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'dew', desc: '【冷卻2回合】凍結空氣轟炸全體敵人。' },
-    { id: 'm_thunder', forClass: 'mage', name: '水墨雷暴', cost: 24, dmg: 26, cd: 3, aoe: true, sprite: 'icon_scroll', unlocked: false, equipped: false, lv: 1, reqSp: 2, reqMat: 'ink', desc: '【冷卻3回合】召喚魔力水墨落雷重創全體敵人！' },
-    { id: 'm_meteor', forClass: 'mage', name: '末日降臨', cost: 34, dmg: 40, cd: 4, aoe: true, sprite: 'icon_fire', unlocked: false, equipped: false, lv: 1, reqSp: 3, reqMat: 'crystal', isMeteor: true, desc: '【冷卻4回合】召喚末日隕石毀滅全場所有魔物！' },
-
-    // 🏹 尋寶遊俠 (Ranger)
-    { id: 'r_shot', forClass: 'ranger', name: '精準射擊', cost: 8, dmg: 19, cd: 0, aoe: false, sprite: 'icon_bow', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'wing', desc: '【無冷卻】瞄準弱點射擊單一目標。' },
-    { id: 'r_double', forClass: 'ranger', name: '二連矢', cost: 16, dmg: 15, cd: 2, aoe: true, sprite: 'icon_bow', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'fiber', desc: '【冷卻2回合】疾速連射箭矢，同時攻擊場上所有敵人。' },
-    { id: 'r_kunai', forClass: 'ranger', name: '毒刃背刺', cost: 22, dmg: 32, cd: 3, aoe: false, sprite: 'icon_dagger', unlocked: false, equipped: false, lv: 1, reqSp: 2, reqMat: 'wing', desc: '【冷卻3回合】瞬移至敵人背後刺擊造成極高單體傷害！' },
-    { id: 'r_rain', forClass: 'ranger', name: '漫天箭雨', cost: 28, dmg: 34, cd: 4, aoe: true, sprite: 'icon_fire', unlocked: false, equipped: false, lv: 1, reqSp: 3, reqMat: 'feather', isMeteor: true, desc: '【冷卻4回合】向天空傾瀉火焰箭雨轟炸全場！' },
-
-    // 🌿 聖言神官 (Cleric)
-    { id: 'c_light', forClass: 'cleric', name: '聖光彈', cost: 10, dmg: 17, cd: 0, aoe: false, sprite: 'icon_scroll', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'dew', healSelf: 12, desc: '【無冷卻】發射聖光攻擊單一敵人，並恢復 12 HP。' },
-    { id: 'c_heal', forClass: 'cleric', name: '聖露治癒', cost: 18, dmg: 14, cd: 2, aoe: true, sprite: 'icon_red_pot', unlocked: true, equipped: true, lv: 1, reqSp: 1, reqMat: 'dew', healSelf: 38, desc: '【冷卻2回合】大幅恢復 38 HP，並以聖光波傷害全體魔物。' },
-    { id: 'c_nova', forClass: 'cleric', name: '淨化新星', cost: 22, dmg: 23, cd: 3, aoe: true, sprite: 'icon_ring', unlocked: false, equipped: false, lv: 1, reqSp: 2, reqMat: 'feather', healSelf: 25, desc: '【冷卻3回合】釋放聖光波傷害全體魔物並恢復 25 HP！' },
-    { id: 'c_judge', forClass: 'cleric', name: '神聖審判', cost: 32, dmg: 36, cd: 4, aoe: true, sprite: 'icon_fire', unlocked: false, equipped: false, lv: 1, reqSp: 3, reqMat: 'scale_time', isMeteor: true, healSelf: 35, desc: '【冷卻4回合】天降審判之光重創全場並恢復 35 HP！' }
-];
-
-/* ==========================================================================
-   3. 遊戲即時狀態 (含題目防重複佇列 questionQueue 與技能冷卻計時器 skillCooldowns)
-   ========================================================================== */
 const State = {
     mode: 'explore',
     turnPhase: 'player',
@@ -448,9 +51,7 @@ const State = {
     currentBattleIsBoss: false,
     quizMode: 'mixed',
 
-    // 智慧題目佇列：已作答題目排到隊尾，避免重複抽題
     questionQueue: [],
-    // 技能冷卻倒數紀錄 { skillId: remainingTurns }
     skillCooldowns: {},
 
     turn: 1,
@@ -463,12 +64,7 @@ const State = {
     heroBuffTimer: 0,
 
     bagCapacity: 10,
-    potions: {
-        hp_pot_s: 3,
-        mp_pot_s: 2,
-        hp_pot_l: 0,
-        atk_scroll: 1
-    },
+    potions: { hp_pot_s: 3, mp_pot_s: 2, hp_pot_l: 0, atk_scroll: 1 },
 
     bagPage: 1,
     forgeSubTab: 'weapon',
@@ -486,14 +82,13 @@ const State = {
     floatingDmgs: [],
     screenFlash: 0,
     selectedSkill: null,
-    skillPts: 3,
-    gold: 100
+    skillPts: 5,
+    gold: 120
 };
 
 let canvas, ctx;
 let deferredInstallPrompt = null;
 
-// 攔截瀏覽器 PWA 安裝事件
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
@@ -517,14 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function getCurrentClassSkills() {
-    return CLASS_SKILLS.filter(s => s.forClass === GameState.heroClass);
+    return CLASS_SKILL_TREES[GameState.heroClass] || CLASS_SKILL_TREES.warrior;
+}
+
+// 計算當前職業已在技能樹投入的總點數
+function getSpentPointsInCurrentTree() {
+    return getCurrentClassSkills().reduce((sum, sk) => sum + (sk.lv || 0), 0);
 }
 
 function getDifficultyMultiplier() {
     return Math.pow(2, State.ngPlusCount || 0);
 }
 
-// 智慧題目佇列：確保所有勾選範圍內的題目輪流出現，答過的排到最後！
 function drawNextQuestionFromQueue() {
     const selectedUnits = (GameState.settings.subjects && GameState.settings.subjects.length)
         ? GameState.settings.subjects
@@ -534,20 +133,15 @@ function drawNextQuestionFromQueue() {
     if (!validPool.length) validPool = QuestionBank;
 
     const validIds = new Set(validPool.map(q => q.id));
-
-    // 過濾掉不在當前勾選範圍內的舊佇列題目
     State.questionQueue = State.questionQueue.filter(id => validIds.has(id));
 
-    // 若佇列已空（代表該範圍所有題目都已答過一輪），重新洗牌補充佇列
     if (State.questionQueue.length === 0) {
         const shuffledIds = validPool.map(q => q.id).sort(() => Math.random() - 0.5);
         State.questionQueue.push(...shuffledIds);
     }
 
-    // 取出佇列第一題，並將在作答後排至隊尾
     const nextId = State.questionQueue.shift();
     State.questionQueue.push(nextId);
-
     return validPool.find(q => q.id === nextId) || validPool[0];
 }
 
@@ -564,8 +158,8 @@ function syncProgressToGameState() {
 }
 
 function loadProgressFromGameState() {
-    State.gold = GameState.gold ?? 100;
-    State.skillPts = GameState.gem ?? 3;
+    State.gold = GameState.gold ?? 120;
+    State.skillPts = GameState.gem ?? 5;
     State.bagCapacity = GameState.bagCapacity || 10;
     State.maxUnlockedStage = GameState.maxUnlockedStage ?? 0;
     State.stageKills = Array.isArray(GameState.stageKills) && GameState.stageKills.length === 6
@@ -573,16 +167,23 @@ function loadProgressFromGameState() {
         : [0, 0, 0, 0, 0, 0];
     State.ngPlusCount = GameState.ngPlusCount || 0;
     State.quizMode = GameState.quizMode || 'mixed';
-    if (GameState.potions) {
-        State.potions = { ...GameState.potions };
-    }
+    if (GameState.potions) State.potions = { ...GameState.potions };
     if (!GameState.settings.subjects || !GameState.settings.subjects.length) {
         GameState.settings.subjects = [...ALL_DEFAULT_UNITS];
     }
 }
 
+function toggleFullScreen() {
+    const docEl = document.documentElement;
+    if (!document.fullscreenElement) {
+        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    }
+}
+
 /* ==========================================================================
-   4. 首頁 (Title Screen) 與創角畫面控制
+   1. 首頁 (Title Screen) 與創角畫面控制
    ========================================================================== */
 function initTitleAndCreateScreens() {
     const tCanvas = document.getElementById('title-bg-canvas');
@@ -595,6 +196,9 @@ function initTitleAndCreateScreens() {
     drawMatrixOnCtx(tCtx, 'yeti_frost', 750, 260, 6);
 
     refreshTitleSaveDisplay();
+
+    // 首頁全螢幕按鈕
+    document.getElementById('btn-title-fullscreen').addEventListener('click', toggleFullScreen);
 
     document.getElementById('btn-continue-game').addEventListener('click', () => {
         AudioSystem.playSFX('win');
@@ -635,21 +239,22 @@ function initTitleAndCreateScreens() {
         const nameVal = document.getElementById('create-hero-name').value.trim() || 'Justin';
         localStorage.removeItem('TIME_BOOK_GUARDIAN_SAVE_V1');
 
+        const startWep = INITIAL_CLASS_WEAPON[chosenClass] || 'wep_wood_sword';
         GameState.heroName = nameVal;
         GameState.heroClass = chosenClass;
         GameState.level = 1;
         GameState.exp = 0;
-        GameState.maxExp = 150; // 提高初始升級門檻，避免升級過快
+        GameState.maxExp = 150;
         GameState.settings.subjects = [...ALL_DEFAULT_UNITS];
-        GameState.unlockedEquipment = ['wep_wood_sword', 'arm_cloth'];
+        GameState.unlockedEquipment = [startWep, 'arm_cloth'];
         GameState.equipment = {
-            weapon: 'wep_wood_sword', offhand: null,
-            head: null, armor: 'arm_cloth', gloves: null, legs: null, boots: null,
-            neck: null, ring1: null, ring2: null, relic: null
+            weapon: startWep, offhand: null,
+            head: null, armor: 'arm_cloth', gloves_l: null, legs: null, gloves_r: null, boots: null,
+            neck: null, ring1: null, ring2: null, relic1: null, relic2: null
         };
 
-        State.gold = 100;
-        State.skillPts = 3;
+        State.gold = 120;
+        State.skillPts = 5;
         State.bagCapacity = 10;
         State.maxUnlockedStage = 0;
         State.stageKills = [0, 0, 0, 0, 0, 0];
@@ -693,7 +298,7 @@ function switchScreen(screenId) {
 }
 
 /* ==========================================================================
-   5. 章節探索、BGM切換、20戰解封BOSS檢查、3~5隻魔物軍團戰鬥生成
+   2. 探索、戰鬥切換與全套 13 裝備槽屬性計算
    ========================================================================== */
 function enterExploreMode(stageIdx = State.stageIdx) {
     State.mode = 'explore';
@@ -701,7 +306,6 @@ function enterExploreMode(stageIdx = State.stageIdx) {
     State.stageIdx = Math.max(0, Math.min(stageIdx, State.maxUnlockedStage));
     GameState.currentMapIdx = State.stageIdx;
 
-    // 啟動輕快探索背景音樂
     AudioSystem.startBGM('explore');
 
     const stats = getFullHeroStats();
@@ -747,14 +351,11 @@ function updateMapHeaderUI() {
     const nextBtn = document.getElementById('btn-next-map');
     if (State.stageIdx >= STAGES.length - 1) {
         nextBtn.disabled = true;
-        nextBtn.title = '已是最終章節';
     } else if (State.stageIdx >= State.maxUnlockedStage) {
         nextBtn.style.opacity = '0.45';
-        nextBtn.title = '🔒 需先完成 20 次討伐並擊敗本章 BOSS 方可解鎖下一章！';
     } else {
         nextBtn.style.opacity = '1';
         nextBtn.disabled = false;
-        nextBtn.title = '前往下一章節';
     }
 }
 
@@ -768,7 +369,6 @@ function triggerEncounterBattle(isBossFight = false) {
     }
 
     AudioSystem.playSFX('wrong');
-    // 切換為緊張戰鬥背景音樂
     AudioSystem.startBGM('combat');
 
     State.mode = 'combat';
@@ -778,7 +378,7 @@ function triggerEncounterBattle(isBossFight = false) {
     State.shieldLayers = 0;
     State.selectedTargetIdx = 0;
     State.currentBattleIsBoss = isBossFight;
-    State.skillCooldowns = {}; // 每場戰鬥開始時重置技能冷卻
+    State.skillCooldowns = {};
 
     const st = STAGES[State.stageIdx];
     const diffMult = getDifficultyMultiplier();
@@ -788,14 +388,7 @@ function triggerEncounterBattle(isBossFight = false) {
             const [px, py] = BOSS_SLOTS_5[idx] || [680, 165];
             const scaledHp = Math.floor(tpl.hp * diffMult);
             const scaledAtk = Math.floor(tpl.atk * diffMult);
-            return {
-                ...structuredClone(tpl),
-                hp: scaledHp,
-                maxHp: scaledHp,
-                atk: scaledAtk,
-                x: px,
-                y: py
-            };
+            return { ...structuredClone(tpl), hp: scaledHp, maxHp: scaledHp, atk: scaledAtk, x: px, y: py };
         });
     } else {
         const count = Math.random() < 0.45 ? 3 : 4;
@@ -803,14 +396,7 @@ function triggerEncounterBattle(isBossFight = false) {
             const tpl = st.roamPool[Math.floor(Math.random() * st.roamPool.length)];
             const scaledHp = Math.floor(tpl.hp * diffMult);
             const scaledAtk = Math.floor(tpl.atk * diffMult);
-            return {
-                ...structuredClone(tpl),
-                hp: scaledHp,
-                maxHp: scaledHp,
-                atk: scaledAtk,
-                x: px,
-                y: py
-            };
+            return { ...structuredClone(tpl), hp: scaledHp, maxHp: scaledHp, atk: scaledAtk, x: px, y: py };
         });
     }
 
@@ -838,7 +424,7 @@ function getFullHeroStats() {
     let atk = base.baseAtk + (GameState.level - 1) * 2;
     let def = base.baseDef + (GameState.level - 1) * 2;
 
-    ['weapon', 'offhand', 'head', 'armor', 'gloves', 'legs', 'boots', 'neck', 'ring1', 'ring2', 'relic'].forEach(slotKey => {
+    Object.keys(SLOT_WATERMARKS).forEach(slotKey => {
         const eqId = GameState.equipment[slotKey];
         const item = EquipmentCatalog[eqId];
         if (item) {
@@ -849,15 +435,6 @@ function getFullHeroStats() {
     });
 
     return { maxHp, atk, def, icon: base.icon, className: base.name };
-}
-
-function toggleFullScreen() {
-    const docEl = document.documentElement;
-    if (!document.fullscreenElement) {
-        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
-    } else {
-        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    }
 }
 
 function initGameHUDAndExploration() {
@@ -898,7 +475,6 @@ function initGameHUDAndExploration() {
         if (e.key === 'ArrowRight' || e.key === 'd') stepMove(42, 0);
     });
 
-    // 點擊地圖任何位置直接行走 / 戰鬥中點擊切換集火目標
     canvas.addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
         const cx = ((e.clientX - rect.left) / rect.width) * 960;
@@ -930,7 +506,6 @@ function initGameHUDAndExploration() {
         if (State.mode === 'explore') {
             triggerEncounterBattle(false);
         } else if (State.turnPhase === 'player') {
-            // 自動選擇第一招未在冷卻中的可用技能
             const readySkill = getCurrentClassSkills().find(
                 s => s.unlocked && s.equipped && !(State.skillCooldowns[s.id] > 0) && State.heroMp >= s.cost
             );
@@ -960,7 +535,7 @@ function updateHeroTopHUD() {
 }
 
 /* ==========================================================================
-   6. 六大章節地貌渲染 + 採集冷卻倒數 + 20戰解封BOSS地標
+   3. 畫面渲染迴圈與地圖互動地標 (採集有機會獲得 🌟 稀有素材！)
    ========================================================================== */
 function renderLoop() {
     const theme = STAGES[State.stageIdx].theme;
@@ -979,150 +554,6 @@ function renderLoop() {
     requestAnimationFrame(renderLoop);
 }
 
-function drawRichEnvironment(c, theme) {
-    if (theme === 'grassland') {
-        c.fillStyle = '#4b7a47';
-        c.fillRect(0, 0, 960, 540);
-        c.fillStyle = '#3d663a';
-        c.fillRect(40, 70, 290, 190);
-        c.fillRect(470, 60, 420, 210);
-        c.fillRect(360, 320, 480, 175);
-
-        c.fillStyle = '#29b6f6';
-        c.fillRect(410, 0, 56, 540);
-        c.fillStyle = '#81d4fa';
-        c.fillRect(424, 0, 20, 540);
-
-        c.fillStyle = '#9c7a54';
-        c.fillRect(70, 235, 810, 88);
-        c.fillStyle = '#b5926b';
-        c.fillRect(80, 245, 790, 68);
-        c.fillStyle = '#6d4c41';
-        for (let bx = 402; bx < 472; bx += 14) {
-            c.fillRect(bx, 230, 10, 98);
-        }
-
-        [[65, 65], [240, 55], [345, 70], [530, 60], [875, 70], [85, 390], [295, 410], [520, 415], [880, 395]].forEach(([tx, ty]) => {
-            drawPixelTree(c, tx, ty, '#2e572c', '#437a40');
-        });
-    } else if (theme === 'ruins') {
-        c.fillStyle = '#c89656';
-        c.fillRect(0, 0, 960, 540);
-        c.strokeStyle = '#a8793e';
-        c.lineWidth = 3;
-        for (let y = 65; y < 540; y += 52) {
-            c.beginPath(); c.moveTo(0, y); c.lineTo(960, y); c.stroke();
-        }
-        for (let x = 0; x < 960; x += 68) {
-            c.beginPath(); c.moveTo(x, 65); c.lineTo(x, 540); c.stroke();
-        }
-        c.fillStyle = '#ab7b40';
-        c.fillRect(120, 125, 730, 295);
-
-        [[105, 85], [310, 85], [620, 85], [855, 85], [105, 390], [310, 390], [620, 390], [855, 390]].forEach(([px, py]) => {
-            c.fillStyle = '#8d6e63';
-            c.fillRect(px, py, 32, 48);
-            c.fillStyle = (Date.now() % 400 < 200) ? '#ff9800' : '#ffeb3b';
-            c.fillRect(px + 10, py - 12, 12, 12);
-        });
-    } else if (theme === 'mine') {
-        c.fillStyle = '#262b3d';
-        c.fillRect(0, 0, 960, 540);
-        c.fillStyle = '#00838f';
-        c.fillRect(0, 28, 960, 58);
-        c.fillRect(390, 86, 84, 454);
-        c.fillStyle = '#00e5ff';
-        c.fillRect(0, 42, 960, 24);
-        c.fillRect(412, 86, 40, 454);
-
-        c.fillStyle = '#5d4037';
-        for (let rx = 70; rx < 880; rx += 22) c.fillRect(rx, 248, 10, 48);
-        c.fillStyle = '#90a4ae';
-        c.fillRect(70, 254, 810, 6);
-        c.fillRect(70, 284, 810, 6);
-
-        [[90, 105], [260, 95], [560, 95], [840, 105], [105, 385], [280, 400], [580, 395], [855, 385]].forEach(([cx, cy]) => {
-            c.fillStyle = '#ab47bc';
-            c.fillRect(cx, cy, 18, 34);
-            c.fillStyle = '#00e5ff';
-            c.fillRect(cx - 10, cy + 12, 12, 22);
-        });
-    } else if (theme === 'volcano') {
-        c.fillStyle = '#2b1614';
-        c.fillRect(0, 0, 960, 540);
-        c.fillStyle = '#3e1f1c';
-        c.fillRect(80, 110, 800, 330);
-
-        c.fillStyle = '#d84315';
-        c.fillRect(0, 35, 960, 55);
-        c.fillRect(420, 90, 75, 450);
-        c.fillStyle = (Date.now() % 500 < 250) ? '#ffeb3b' : '#ff9800';
-        c.fillRect(0, 50, 960, 22);
-        c.fillRect(440, 90, 35, 450);
-
-        c.fillStyle = '#4e342e';
-        c.fillRect(395, 225, 125, 95);
-
-        [[95, 95], [280, 85], [610, 90], [850, 95], [105, 395], [620, 400], [855, 395]].forEach(([vx, vy]) => {
-            c.fillStyle = '#4e342e';
-            c.fillRect(vx, vy, 36, 44);
-            c.fillStyle = '#ff5722';
-            c.fillRect(vx + 8, vy - 8, 20, 12);
-        });
-    } else if (theme === 'snowfield') {
-        c.fillStyle = '#cfd8dc';
-        c.fillRect(0, 0, 960, 540);
-        c.fillStyle = '#eceff1';
-        c.fillRect(70, 95, 820, 350);
-
-        c.fillStyle = '#80deea';
-        c.fillRect(380, 0, 90, 540);
-        c.fillStyle = '#e0f7fa';
-        c.fillRect(405, 0, 30, 540);
-
-        [[75, 70], [250, 65], [560, 65], [865, 75], [90, 390], [290, 405], [580, 405], [870, 395]].forEach(([tx, ty]) => {
-            drawPixelTree(c, tx, ty, '#006064', '#4dd0e1');
-        });
-    } else {
-        c.fillStyle = '#140c24';
-        c.fillRect(0, 0, 960, 540);
-
-        c.strokeStyle = '#311b92';
-        c.lineWidth = 2;
-        for (let y = 60; y < 540; y += 48) {
-            c.beginPath(); c.moveTo(0, y); c.lineTo(960, y); c.stroke();
-        }
-        for (let x = 0; x < 960; x += 64) {
-            c.beginPath(); c.moveTo(x, 60); c.lineTo(x, 540); c.stroke();
-        }
-
-        c.strokeStyle = '#ffca28';
-        c.lineWidth = 3;
-        c.strokeRect(160, 130, 640, 280);
-        c.strokeRect(410, 190, 140, 160);
-
-        [[95, 85], [290, 85], [640, 85], [845, 85], [95, 395], [845, 395]].forEach(([bx, by]) => {
-            c.fillStyle = '#4a148c';
-            c.fillRect(bx, by, 42, 52);
-            c.fillStyle = '#ffca28';
-            c.fillRect(bx + 6, by + 8, 30, 8);
-            c.fillStyle = '#00e5ff';
-            c.fillRect(bx + 6, by + 22, 30, 8);
-        });
-    }
-}
-
-function drawPixelTree(c, x, y, darkColor, lightColor) {
-    c.fillStyle = 'rgba(0,0,0,0.32)';
-    c.fillRect(x - 18, y + 36, 52, 16);
-    c.fillStyle = '#5d4037';
-    c.fillRect(x, y + 18, 16, 26);
-    c.fillStyle = darkColor;
-    c.fillRect(x - 18, y - 12, 52, 34);
-    c.fillStyle = lightColor;
-    c.fillRect(x - 12, y - 22, 40, 26);
-}
-
 function drawExploreLandmarks() {
     const st = STAGES[State.stageIdx];
 
@@ -1137,7 +568,7 @@ function drawExploreLandmarks() {
         drawMatrixOnCtx(ctx, 'icon_shroom', 312, 365, 3);
         ctx.globalAlpha = 1.0;
     } else {
-        drawLandmarkLabel(330, 355, '✨ 素材採集點(可採集)', '#76ff03');
+        drawLandmarkLabel(330, 355, '✨ 素材採集點(含稀有)', '#76ff03');
         drawMatrixOnCtx(ctx, 'icon_shroom', 312, 365, 3);
     }
 
@@ -1213,13 +644,17 @@ function updateExplorationMovement() {
         }
 
         State.gatherReadyTime = now + GATHER_COOLDOWN_SEC * 1000;
-        const pool = STAGES[State.stageIdx].dropPool;
-        const matKey = pool[Math.floor(Math.random() * pool.length)];
+        const st = STAGES[State.stageIdx];
+        // 30% 機率採集到該章節專屬【稀有素材】！
+        const isRare = Math.random() < 0.3 && st.rareDrop;
+        const matKey = isRare ? st.rareDrop : st.dropPool[Math.floor(Math.random() * st.dropPool.length)];
         GameState.materials[matKey] = (GameState.materials[matKey] || 0) + 1;
         const matInfo = MaterialsCatalog[matKey];
-        AudioSystem.playSFX('correct');
-        State.heroBuffText = `✨ 採集獲得 ${matInfo.icon}${matInfo.name}+1 (冷卻30s)`;
-        State.heroBuffTimer = 65;
+        AudioSystem.playSFX(isRare ? 'win' : 'correct');
+        State.heroBuffText = isRare
+            ? `🌟 幸運採集稀有素材【${matInfo.icon}${matInfo.name}】+1！`
+            : `✨ 採集獲得 ${matInfo.icon}${matInfo.name}+1 (冷卻30s)`;
+        State.heroBuffTimer = 70;
         syncProgressToGameState();
     } else if (Math.hypot(State.mapX - 565, State.mapY - 205) < 48) {
         State.stepCooldown = 60;
@@ -1374,7 +809,7 @@ function drawProjectilesAndFX() {
 }
 
 /* ==========================================================================
-   7. 技能冷卻 (CD) 顯示 ＋ 智慧題目佇列抽題 ＋ 輪流回合結算
+   4. 戰鬥技能冷卻 (CD) ＋ 智慧佇列抽題 ＋ 輪流回合結算
    ========================================================================== */
 function renderBottomLeftHUD() {
     const skillRow = document.getElementById('ui-active-skills');
@@ -1456,8 +891,6 @@ function usePotionInBattle(pot) {
 
 function openQuizForSkill(skill) {
     State.selectedSkill = skill;
-
-    // 從防重複佇列抽取下一題 (已答過的題目會自動排到隊尾)
     const rawQ = drawNextQuestionFromQueue();
     const normQ = normalizeQuestion(rawQ, State.quizMode || 'mixed');
 
@@ -1537,10 +970,9 @@ function executePlayerTurnAction(skill, isCorrect) {
         return;
     }
 
-    // 扣除 SP 並設定該技能進入冷卻 (若 cd > 0)
     State.heroMp = Math.max(0, State.heroMp - skill.cost);
     if (skill.cd && skill.cd > 0) {
-        State.skillCooldowns[skill.id] = skill.cd + 1; // 下回合開始時會減 1
+        State.skillCooldowns[skill.id] = skill.cd + 1;
     }
     renderBottomLeftHUD();
 
@@ -1559,7 +991,6 @@ function executePlayerTurnAction(skill, isCorrect) {
     const aliveEnemies = State.enemies.filter(e => e.hp > 0);
     if (!aliveEnemies.length) return;
 
-    // 平衡後傷害公式：鼓勵玩家透過連擊與升級武器來推進回合
     const comboBonus = Math.min(14, GameState.combat.combo * 2);
     const totalPower = skill.dmg + Math.floor(stats.atk * 0.55) + comboBonus;
 
@@ -1672,7 +1103,7 @@ function startEnemyTurnPhase() {
                     if (State.heroHp <= 0) {
                         setTimeout(() => {
                             scrollEl.classList.add('hidden');
-                            alert('💀 守護者不敵魔物軍團圍攻倒下了！快去大熊工坊鍛造主副手武器、全套護具與調配藥水吧！');
+                            alert('💀 守護者不敵魔物軍團圍攻倒下了！快去大熊工坊鍛造職業專屬神武、全套護具與調配藥水吧！');
                             enterExploreMode(State.stageIdx);
                         }, 500);
                     }
@@ -1681,7 +1112,6 @@ function startEnemyTurnPhase() {
         }, idx * 560);
     });
 
-    // 敵方全體攻擊完畢，進入下一回合，所有技能冷卻時間 (CD) 減 1
     setTimeout(() => {
         if (State.mode !== 'combat' || State.heroHp <= 0) return;
         scrollEl.classList.add('hidden');
@@ -1690,9 +1120,7 @@ function startEnemyTurnPhase() {
         State.heroMp = Math.min(State.heroMaxMp, State.heroMp + 5);
 
         Object.keys(State.skillCooldowns).forEach(skId => {
-            if (State.skillCooldowns[skId] > 0) {
-                State.skillCooldowns[skId] -= 1;
-            }
+            if (State.skillCooldowns[skId] > 0) State.skillCooldowns[skId] -= 1;
         });
 
         renderBottomLeftHUD();
@@ -1701,8 +1129,17 @@ function startEnemyTurnPhase() {
 }
 
 /* ==========================================================================
-   8. 雙頁策略冒險書：含 4 大分類鍛造工坊、背包擴充與錯題煉金
+   5. 雙頁策略書：壓紋裝備欄、可關閉介紹彈窗、5層分支技能樹、職業武器限制
    ========================================================================== */
+function hideItemTooltip() {
+    document.getElementById('ui-item-tooltip').classList.add('hidden');
+}
+
+function showItemTooltip(htmlContent) {
+    document.getElementById('ui-tooltip-content').innerHTML = htmlContent;
+    document.getElementById('ui-item-tooltip').classList.remove('hidden');
+}
+
 function initBookModal() {
     const bearCanvas = document.getElementById('smith-bear-canvas');
     const bCtx = bearCanvas.getContext('2d');
@@ -1715,13 +1152,28 @@ function initBookModal() {
 
     document.getElementById('btn-close-book').addEventListener('click', () => {
         document.getElementById('modal-book').classList.add('hidden');
-        document.getElementById('ui-item-tooltip').classList.add('hidden');
+        hideItemTooltip();
         renderBottomLeftHUD();
+    });
+
+    // 點擊介紹彈窗右上角 ✖ 按鈕關閉
+    document.getElementById('btn-close-tooltip').addEventListener('click', (e) => {
+        e.stopPropagation();
+        AudioSystem.playSFX('click');
+        hideItemTooltip();
+    });
+
+    // 點擊書本空白處自動關閉介紹彈窗
+    document.querySelector('.px-open-book').addEventListener('click', (e) => {
+        if (!e.target.closest('.px-item-cell') && !e.target.closest('.st-node-card') && !e.target.closest('#ui-item-tooltip')) {
+            hideItemTooltip();
+        }
     });
 
     document.querySelectorAll('.bookmark-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             AudioSystem.playSFX('click');
+            hideItemTooltip();
             openBook(btn.dataset.tab);
         });
     });
@@ -1729,6 +1181,7 @@ function initBookModal() {
     document.querySelectorAll('.pent-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             AudioSystem.playSFX('click');
+            hideItemTooltip();
             document.querySelectorAll('.pent-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             State.bagPage = parseInt(tab.dataset.page, 10);
@@ -1749,8 +1202,38 @@ function initBookModal() {
         });
     });
 
-    document.getElementById('btn-expand-bag').addEventListener('click', () => {
-        tryExpandBagCapacity();
+    document.getElementById('btn-expand-bag').addEventListener('click', tryExpandBagCapacity);
+
+    // 重置技能樹點數按鈕 (附圖 1 右上角功能)
+    document.getElementById('btn-reset-skills').addEventListener('click', () => {
+        const mySkills = getCurrentClassSkills();
+        let refunded = 0;
+        mySkills.forEach((sk, idx) => {
+            if (idx < 2) {
+                if (sk.lv > 1) {
+                    refunded += (sk.lv - 1);
+                    sk.dmg -= (sk.lv - 1) * 4;
+                    sk.lv = 1;
+                }
+                sk.unlocked = true;
+                sk.equipped = true;
+            } else {
+                if (sk.lv > 0) {
+                    refunded += sk.lv;
+                    sk.dmg -= (sk.lv - 1) * 4;
+                    sk.lv = 0;
+                }
+                sk.unlocked = false;
+                sk.equipped = false;
+            }
+        });
+        if (refunded > 0) {
+            AudioSystem.playSFX('win');
+            State.skillPts += refunded;
+            syncProgressToGameState();
+            renderBookSkillView();
+            renderBottomLeftHUD();
+        }
     });
 
     document.querySelectorAll('.forge-cat-btn').forEach(btn => {
@@ -1764,10 +1247,7 @@ function initBookModal() {
 
 function getBagExpandCost() {
     const step = Math.floor((State.bagCapacity - 10) / 5) + 1;
-    return {
-        gold: step * 100,
-        fiber: step * 2
-    };
+    return { gold: step * 100, fiber: step * 2 };
 }
 
 function tryExpandBagCapacity() {
@@ -1789,13 +1269,12 @@ function tryExpandBagCapacity() {
     GameState.materials.fiber -= cost.fiber;
     State.bagCapacity = Math.min(30, State.bagCapacity + 5);
     syncProgressToGameState();
-
-    document.getElementById('ui-gold').innerText = State.gold;
     renderBookEquipView();
 }
 
 function openBook(mode = 'equip') {
     AudioSystem.playSFX('click');
+    hideItemTooltip();
     document.querySelectorAll('.bookmark-tab').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === mode);
     });
@@ -1805,10 +1284,6 @@ function openBook(mode = 'equip') {
         document.getElementById(`view-right-${key}`).classList.toggle('active', key === mode);
     });
 
-    document.getElementById('ui-gold').innerText = State.gold;
-    document.getElementById('ui-footer-sp').innerText = State.skillPts;
-    document.getElementById('ui-footer-cap').innerText = `${State.bagCapacity}/30`;
-
     renderBookEquipView();
     renderBookSkillView();
     renderBookForgeView();
@@ -1817,23 +1292,39 @@ function openBook(mode = 'equip') {
     document.getElementById('modal-book').classList.remove('hidden');
 }
 
+// 渲染分頁 1：附圖 2 壓紋紙娃娃裝備欄 ＋ 職業專屬武器穿戴檢查 ＋ 介紹彈窗
 function renderBookEquipView() {
     document.querySelectorAll('.pd-slot[data-slot]').forEach(slotEl => {
         const slotKey = slotEl.dataset.slot;
         const eqId = GameState.equipment[slotKey];
         const eqObj = EquipmentCatalog[eqId];
-        slotEl.innerHTML = eqObj ? `<img src="${getSpriteDataURL(eqObj.sprite, 3)}"/>` : '';
+        if (eqObj) {
+            slotEl.innerHTML = `<img src="${getSpriteDataURL(eqObj.sprite, 3)}"/>`;
+        } else {
+            // 未穿戴時顯示半透明部位壓紋 (還原附圖 2)
+            const wmKey = SLOT_WATERMARKS[slotKey] || 'wm_armor';
+            slotEl.innerHTML = `<img src="${getSpriteDataURL(wmKey, 3)}" style="opacity:0.45;"/>`;
+        }
     });
 
+    // 腰帶 6 圓槽 (還原附圖 2)
     const beltRow = document.getElementById('book-belt-slots');
     beltRow.innerHTML = '';
-    Object.values(PotionsCatalog).forEach(pot => {
-        const qty = State.potions[pot.id] || 0;
+    const potList = Object.values(PotionsCatalog);
+    for (let i = 0; i < 6; i++) {
+        const pot = potList[i];
         const c = document.createElement('div');
         c.className = 'px-belt-circle';
-        c.innerHTML = `<img src="${getSpriteDataURL(pot.sprite, 3)}"/><span class="cell-qty">x${qty}</span>`;
+        if (pot) {
+            const qty = State.potions[pot.id] || 0;
+            c.innerHTML = `<img src="${getSpriteDataURL(pot.sprite, 3)}"/><span class="cell-qty">x${qty}</span>`;
+            c.addEventListener('click', () => {
+                usePotionInBattle(pot);
+                renderBookEquipView();
+            });
+        }
         beltRow.appendChild(c);
-    });
+    }
 
     let itemsToShow = [];
     if (State.bagPage === 1) {
@@ -1850,7 +1341,6 @@ function renderBookEquipView() {
 
     const catNames = { 1: '1. 🗡️ 武器', 2: '2. 🛡️ 護具', 3: '3. 💍 飾品', 4: '4. 🧪 藥水', 5: '5. 📦 素材' };
     document.getElementById('ui-bag-cat-title').innerText = `${catNames[State.bagPage]} (${itemsToShow.length}/${State.bagCapacity}格)`;
-    document.getElementById('ui-footer-cap').innerText = `${State.bagCapacity}/30`;
 
     const expBtn = document.getElementById('btn-expand-bag');
     if (State.bagCapacity >= 30) {
@@ -1863,7 +1353,6 @@ function renderBookEquipView() {
     }
 
     const bagGrid = document.getElementById('book-bag-grid');
-    const tooltip = document.getElementById('ui-item-tooltip');
     bagGrid.innerHTML = '';
 
     for (let i = 0; i < 30; i++) {
@@ -1874,8 +1363,7 @@ function renderBookEquipView() {
             cell.style.background = '#9e8565';
             cell.style.opacity = '0.75';
             cell.innerHTML = `<img src="${getSpriteDataURL('icon_lock', 2)}" />`;
-            cell.title = '🔒 尚未解鎖的背包格仔（點擊可擴充容量）';
-            cell.addEventListener('click', () => tryExpandBagCapacity());
+            cell.addEventListener('click', tryExpandBagCapacity);
             bagGrid.appendChild(cell);
             continue;
         }
@@ -1888,13 +1376,16 @@ function renderBookEquipView() {
         }
 
         const isEq = item.slot && (GameState.equipment[item.slot] === item.id);
+        const wrongClass = item.forClass && item.forClass !== GameState.heroClass;
+
         let qtyText = '';
         if (State.bagPage === 4) qtyText = `x${State.potions[item.id]}`;
         else if (State.bagPage === 5) qtyText = `x${GameState.materials[item.id]}`;
-        else qtyText = isEq ? '已裝' : 'x1';
+        else qtyText = isEq ? '已裝' : (wrongClass ? '限職' : 'x1');
 
         cell.className = `px-item-cell ${item.bg || 'bg-blue'}`;
         if (isEq) cell.style.outline = '3px solid #ffeb3b';
+        if (wrongClass) cell.style.opacity = '0.55';
 
         cell.innerHTML = `
             <img src="${getSpriteDataURL(item.sprite, 3)}"/>
@@ -1902,31 +1393,60 @@ function renderBookEquipView() {
             ${isEq ? '<span class="cell-plus">E</span>' : ''}
         `;
 
-        cell.addEventListener('mouseenter', () => {
-            tooltip.innerHTML = `
-                <div class="tt-header">${item.name}</div>
-                <div class="tt-sub">${item.slot ? `穿戴部位：${item.slot}｜狀態：${isEq ? '✅穿戴中' : '未穿戴'}` : `數量：${qtyText}`}</div>
-                <div class="tt-green">${item.desc}</div>
-                <div class="tt-flavor">${item.slot ? (isEq ? '🖱️ 點擊即可除下此裝備' : '🖱️ 點擊即可穿戴此裝備') : '🖱️ 點擊使用'}</div>
-            `;
-            tooltip.classList.remove('hidden');
-        });
-        cell.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+        // 點擊物品：彈出帶有「穿戴/卸下」與「✖關閉」按鈕的詳細介紹卡
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            AudioSystem.playSFX('click');
 
-        cell.addEventListener('click', () => {
+            const clsReqTxt = item.forClass
+                ? `｜限定職業：<b style="color:${wrongClass ? '#c62828' : '#1b5e20'};">${ClassNamesMap[item.forClass]}</b>`
+                : '｜全職業通用';
+
+            let actionBtnHtml = '';
             if (item.slot) {
-                AudioSystem.playSFX('correct');
-                if (GameState.equipment[item.slot] === item.id) {
-                    GameState.equipment[item.slot] = null;
+                if (wrongClass) {
+                    actionBtnHtml = `<div style="margin-top:8px; color:#c62828; font-weight:900;">⚠️ 你的當前職業無法穿戴此專屬武器！</div>`;
                 } else {
-                    GameState.equipment[item.slot] = item.id;
+                    actionBtnHtml = `
+                        <button id="btn-tt-equip" class="px-gold-btn" style="width:100%; margin-top:8px; padding:5px;">
+                            ${isEq ? '📤 卸下此裝備' : '📥 立即穿戴此裝備'}
+                        </button>
+                    `;
                 }
-                syncProgressToGameState();
-                updateHeroTopHUD();
-                renderBookEquipView();
             } else if (State.bagPage === 4) {
-                usePotionInBattle(item);
-                renderBookEquipView();
+                actionBtnHtml = `<button id="btn-tt-usepot" class="px-gold-btn" style="width:100%; margin-top:8px; padding:5px;">🧪 立即飲用</button>`;
+            }
+
+            showItemTooltip(`
+                <div class="tt-header">${item.name}</div>
+                <div class="tt-sub">${item.slot ? `部位：${item.slot}` : `持有：${qtyText}`}${clsReqTxt}</div>
+                <div class="tt-green">${item.desc}</div>
+                ${actionBtnHtml}
+            `);
+
+            const eqBtn = document.getElementById('btn-tt-equip');
+            if (eqBtn) {
+                eqBtn.addEventListener('click', () => {
+                    AudioSystem.playSFX('correct');
+                    if (GameState.equipment[item.slot] === item.id) {
+                        GameState.equipment[item.slot] = null;
+                    } else {
+                        GameState.equipment[item.slot] = item.id;
+                    }
+                    syncProgressToGameState();
+                    updateHeroTopHUD();
+                    hideItemTooltip();
+                    renderBookEquipView();
+                });
+            }
+
+            const potBtn = document.getElementById('btn-tt-usepot');
+            if (potBtn) {
+                potBtn.addEventListener('click', () => {
+                    usePotionInBattle(item);
+                    hideItemTooltip();
+                    renderBookEquipView();
+                });
             }
         });
 
@@ -1934,18 +1454,20 @@ function renderBookEquipView() {
     }
 }
 
+// 渲染分頁 2：附圖 1 風格「5 層分支延伸技能樹」
 function renderBookSkillView() {
+    const spentPts = getSpentPointsInCurrentTree();
     document.getElementById('ui-sp-count').innerText = State.skillPts;
-    document.getElementById('ui-footer-sp').innerText = State.skillPts;
 
     const clsInfo = ClassBaseStats[GameState.heroClass] || ClassBaseStats.warrior;
     document.getElementById('skill-cur-cls-name').innerText = `${clsInfo.icon} ${clsInfo.name}`;
 
     const mySkills = getCurrentClassSkills();
 
+    // 左頁：出戰技能欄 (最多 4 招)
     const eqRow = document.getElementById('book-equipped-skills');
     eqRow.innerHTML = '';
-    mySkills.filter(s => s.unlocked && s.equipped).forEach(sk => {
+    mySkills.filter(s => s.unlocked && s.equipped).slice(0, 4).forEach(sk => {
         const box = document.createElement('div');
         box.className = 'px-skill-box';
         box.title = `點擊卸下【${sk.name}】`;
@@ -1963,102 +1485,112 @@ function renderBookSkillView() {
         eqRow.appendChild(box);
     });
 
-    const listEl = document.getElementById('book-skill-research-list');
-    listEl.innerHTML = '';
+    // 右頁：繪製 5 層分支節點 (含右側 5+, 10+, 20+, 30+ 門檻標記)
+    const nodesLayer = document.getElementById('book-skill-tree-nodes');
+    nodesLayer.innerHTML = '';
+
+    // 繪製右側階層門檻標籤 (還原附圖 1)
+    [
+        { y: 90, req: 3, txt: '💎3+' },
+        { y: 150, req: 6, txt: '💎6+' },
+        { y: 210, req: 10, txt: '💎10+' },
+        { y: 270, req: 15, txt: '💎15+' }
+    ].forEach(tierInfo => {
+        const tag = document.createElement('div');
+        tag.style.position = 'absolute';
+        tag.style.right = '6px';
+        tag.style.top = `${tierInfo.y - 8}px`;
+        tag.style.fontSize = '10px';
+        tag.style.fontWeight = '900';
+        tag.style.color = spentPts >= tierInfo.req ? '#1b5e20' : '#795548';
+        tag.innerText = tierInfo.txt;
+        nodesLayer.appendChild(tag);
+    });
 
     mySkills.forEach(sk => {
-        const matInfo = MaterialsCatalog[sk.reqMat] || MaterialsCatalog.fiber;
-        const haveMat = GameState.materials[sk.reqMat] || 0;
-        const canResearch = (State.skillPts >= sk.reqSp && haveMat >= 2);
-        const canUpgrade = (State.skillPts >= 1);
+        const parentSkill = sk.parentId ? mySkills.find(p => p.id === sk.parentId) : null;
+        const parentUnlocked = !parentSkill || parentSkill.unlocked;
 
-        const card = document.createElement('div');
-        card.className = 'forge-card';
+        const node = document.createElement('div');
+        node.className = `st-node-card ${sk.unlocked ? 'unlocked' : ''}`;
+        node.style.left = `${(sk.x / 320) * 100}%`;
+        node.style.top = `${(sk.y / 300) * 100}%`;
+        if (!parentUnlocked) node.style.opacity = '0.5';
 
-        let actionHtml = '';
-        if (!sk.unlocked) {
-            actionHtml = `
-                <button class="px-gold-btn" style="padding:5px 8px; font-size:11px;" data-act="research" ${canResearch ? '' : 'disabled'}>
-                    🔬 研發解鎖
-                </button>
-            `;
-        } else {
-            actionHtml = `
-                <div style="display:flex; flex-direction:column; gap:3px;">
-                    <button class="px-orange-action-btn" style="padding:3px 6px; font-size:10px;" data-act="toggle">
-                        ${sk.equipped ? '✅ 已裝配(卸下)' : '📥 裝配出戰'}
-                    </button>
-                    <button class="px-gold-btn" style="padding:3px 6px; font-size:10px;" data-act="upgrade" ${canUpgrade ? '' : 'disabled'}>
-                        ⬆️ 強化 Lv.${sk.lv} (💎1)
-                    </button>
-                </div>
-            `;
-        }
-
-        card.innerHTML = `
-            <div style="display:flex; gap:6px; align-items:center;">
-                <div class="px-skill-box" style="width:38px; height:38px; opacity:${sk.unlocked ? '1' : '0.45'};">
-                    <img src="${getSpriteDataURL(sk.sprite, 3)}"/>
-                </div>
-                <div>
-                    <strong style="font-size:12px; color:#241409;">
-                        ${sk.unlocked ? `✨ ${sk.name} (Lv.${sk.lv})` : `🔒 ${sk.name} [未研發]`}
-                    </strong>
-                    <div style="font-size:10px; color:#b71c1c; font-weight:bold;">
-                        消耗 SP：${sk.cost} ｜ 威力：${sk.dmg} ｜ 冷卻：${sk.cd}回合
-                    </div>
-                    <div style="font-size:10px; color:#2e7d32; font-weight:bold;">${sk.desc}</div>
-                    ${!sk.unlocked ? `<small style="color:#d84315; font-weight:900;">研發需求：💎${State.skillPts}/${sk.reqSp} ＋ ${matInfo.icon}${matInfo.name} ${haveMat}/2</small>` : ''}
-                </div>
-            </div>
-            ${actionHtml}
+        node.innerHTML = `
+            <img src="${getSpriteDataURL(sk.sprite, 3)}"/>
+            <span class="st-node-badge">${sk.lv}/${sk.maxLv} ${sk.lv < sk.maxLv ? '➕' : ''}</span>
         `;
 
-        const resBtn = card.querySelector('[data-act="research"]');
-        if (resBtn) {
-            resBtn.addEventListener('click', () => {
-                AudioSystem.playSFX('win');
-                State.skillPts -= sk.reqSp;
-                GameState.materials[sk.reqMat] -= 2;
-                sk.unlocked = true;
-                sk.equipped = true;
-                syncProgressToGameState();
-                renderBookSkillView();
-                renderBottomLeftHUD();
-            });
-        }
+        node.addEventListener('click', (e) => {
+            e.stopPropagation();
+            AudioSystem.playSFX('click');
 
-        const togBtn = card.querySelector('[data-act="toggle"]');
-        if (togBtn) {
-            togBtn.addEventListener('click', () => {
-                if (sk.equipped && mySkills.filter(s => s.unlocked && s.equipped).length <= 1) {
-                    alert('最少需保留 1 招出戰技能！');
-                    return;
-                }
-                AudioSystem.playSFX('click');
-                sk.equipped = !sk.equipped;
-                renderBookSkillView();
-                renderBottomLeftHUD();
-            });
-        }
+            const canUnlockOrUpgrade = parentUnlocked && State.skillPts >= 1 && sk.lv < sk.maxLv;
 
-        const upgBtn = card.querySelector('[data-act="upgrade"]');
-        if (upgBtn) {
-            upgBtn.addEventListener('click', () => {
-                AudioSystem.playSFX('craft');
-                State.skillPts -= 1;
-                sk.lv += 1;
-                sk.dmg += 4;
-                syncProgressToGameState();
-                renderBookSkillView();
-                renderBottomLeftHUD();
-            });
-        }
+            showItemTooltip(`
+                <div class="tt-header">${sk.name} (Lv.${sk.lv}/${sk.maxLv})</div>
+                <div class="tt-sub">💧消耗：${sk.cost} SP ｜ ⚔️威力：${sk.dmg} ｜ ⏳CD：${sk.cd}回合</div>
+                <div class="tt-green">${sk.desc}</div>
+                ${!parentUnlocked ? `<div style="color:#c62828; font-weight:900; margin-top:4px;">🔒 需先研發上層前置技能【${parentSkill.name}】！</div>` : ''}
+                <div style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
+                    <button id="btn-st-upg" class="px-gold-btn" style="padding:5px;" ${canUnlockOrUpgrade ? '' : 'disabled'}>
+                        ${sk.unlocked ? `➕ 投入 1 技能點強化 (持有💎${State.skillPts})` : `🔬 消耗 1 技能點研發解鎖`}
+                    </button>
+                    ${sk.unlocked ? `
+                        <button id="btn-st-eq" class="px-orange-action-btn" style="padding:5px;">
+                            ${sk.equipped ? '📤 從出戰欄卸下' : '📥 裝配至左下角出戰欄'}
+                        </button>
+                    ` : ''}
+                </div>
+            `);
 
-        listEl.appendChild(card);
+            const upgBtn = document.getElementById('btn-st-upg');
+            if (upgBtn && canUnlockOrUpgrade) {
+                upgBtn.addEventListener('click', () => {
+                    AudioSystem.playSFX('win');
+                    State.skillPts -= 1;
+                    if (!sk.unlocked) {
+                        sk.unlocked = true;
+                        if (mySkills.filter(s => s.unlocked && s.equipped).length < 4) {
+                            sk.equipped = true;
+                        }
+                    } else {
+                        sk.dmg += 4;
+                    }
+                    sk.lv += 1;
+                    syncProgressToGameState();
+                    hideItemTooltip();
+                    renderBookSkillView();
+                    renderBottomLeftHUD();
+                });
+            }
+
+            const eqBtn = document.getElementById('btn-st-eq');
+            if (eqBtn) {
+                eqBtn.addEventListener('click', () => {
+                    if (sk.equipped && mySkills.filter(s => s.unlocked && s.equipped).length <= 1) {
+                        alert('最少需保留 1 招出戰技能！');
+                        return;
+                    }
+                    if (!sk.equipped && mySkills.filter(s => s.unlocked && s.equipped).length >= 4) {
+                        alert('出戰欄最多裝配 4 招技能！請先點擊左頁卸下一招。');
+                        return;
+                    }
+                    AudioSystem.playSFX('correct');
+                    sk.equipped = !sk.equipped;
+                    hideItemTooltip();
+                    renderBookSkillView();
+                    renderBottomLeftHUD();
+                });
+            }
+        });
+
+        nodesLayer.appendChild(node);
     });
 }
 
+// 渲染分頁 3：4 大分類鍛造列表 (武器標示專屬職業與稀有素材)
 function renderBookForgeView() {
     const stockBox = document.getElementById('book-mat-stock');
     stockBox.innerHTML = '';
@@ -2066,6 +1598,7 @@ function renderBookForgeView() {
         const count = GameState.materials[mat.id] || 0;
         const pill = document.createElement('div');
         pill.className = 'mat-pill';
+        if (mat.rarity === 'epic') pill.style.background = '#fff2be';
         pill.innerHTML = `<span>${mat.icon} ${mat.name}</span><b style="color:#b71c1c;">${count}</b>`;
         stockBox.appendChild(pill);
     });
@@ -2116,7 +1649,6 @@ function renderBookForgeView() {
                         else GameState.materials[k] -= need;
                     }
                     State.potions[pot.id] = (State.potions[pot.id] || 0) + 1;
-                    document.getElementById('ui-gold').innerText = State.gold;
                     syncProgressToGameState();
                     renderBookForgeView();
                     renderBottomLeftHUD();
@@ -2133,6 +1665,7 @@ function renderBookForgeView() {
 
     filteredEquip.forEach(item => {
         const isUnlocked = GameState.unlockedEquipment.includes(item.id);
+        const isMyClass = !item.forClass || item.forClass === GameState.heroClass;
 
         const reqs = [];
         let canCraft = true;
@@ -2148,11 +1681,15 @@ function renderBookForgeView() {
             }
         }
 
+        const clsBadge = item.forClass
+            ? `<span style="background:${isMyClass ? '#2e7d32' : '#757575'}; color:#fff; padding:1px 5px; font-size:10px; margin-left:4px;">${ClassNamesMap[item.forClass]}</span>`
+            : `<span style="background:#1565c0; color:#fff; padding:1px 5px; font-size:10px; margin-left:4px;">全職業通用</span>`;
+
         const card = document.createElement('div');
         card.className = 'forge-card';
         card.innerHTML = `
             <div>
-                <strong style="font-size:12px; color:#4a2311;">${item.name}</strong>
+                <strong style="font-size:12px; color:#4a2311;">${item.name} ${clsBadge}</strong>
                 <div style="color:#2e7d32; font-weight:bold;">${item.desc}</div>
                 <small style="color:#b71c1c; font-weight:bold;">${isUnlocked ? '✨ 已鍛造並收入分類背包' : '需求：' + reqs.join(' ＋ ')}</small>
             </div>
@@ -2178,8 +1715,10 @@ function renderBookForgeView() {
                     else GameState.materials[k] -= need;
                 }
                 GameState.unlockedEquipment.push(item.id);
-                GameState.equipment[item.slot] = item.id;
-                document.getElementById('ui-gold').innerText = State.gold;
+                // 若符合當前職業，自動幫玩家穿戴上身
+                if (isMyClass) {
+                    GameState.equipment[item.slot] = item.id;
+                }
                 syncProgressToGameState();
                 updateHeroTopHUD();
                 renderBookForgeView();
@@ -2189,6 +1728,7 @@ function renderBookForgeView() {
     });
 }
 
+// 渲染分頁 4：轉職聖殿 (轉職時自動卸下不合新職業的舊武器，並贈與新職業基礎武器)
 function renderBookGuildView() {
     const curCls = ClassBaseStats[GameState.heroClass] || ClassBaseStats.warrior;
     document.getElementById('guild-cur-class').innerText = `${curCls.icon} ${curCls.name}`;
@@ -2224,6 +1764,18 @@ function renderBookGuildView() {
                 State.gold -= COST_GOLD;
                 State.skillPts -= COST_SP;
                 GameState.heroClass = cls.id;
+
+                // 解鎖並換上新職業的專屬初始武器
+                const baseWep = INITIAL_CLASS_WEAPON[cls.id];
+                if (baseWep && !GameState.unlockedEquipment.includes(baseWep)) {
+                    GameState.unlockedEquipment.push(baseWep);
+                }
+                ['weapon', 'offhand'].forEach(slotKey => {
+                    const curEq = EquipmentCatalog[GameState.equipment[slotKey]];
+                    if (curEq && curEq.forClass && curEq.forClass !== cls.id) {
+                        GameState.equipment[slotKey] = (slotKey === 'weapon') ? baseWep : null;
+                    }
+                });
 
                 syncProgressToGameState();
                 updateHeroTopHUD();
@@ -2288,7 +1840,7 @@ function renderBookMistakeView() {
 }
 
 /* ==========================================================================
-   9. 戰鬥獲勝結算、設定面板、安裝 App 與強制更新最新版本
+   6. 戰鬥獲勝結算（含 🌟 稀有素材掉落）與設定視窗
    ========================================================================== */
 function initVictoryAndQuizModals() {
     const vicCanvas = document.getElementById('vic-hero-canvas');
@@ -2325,7 +1877,6 @@ function initVictoryAndQuizModals() {
         AudioSystem.speakQuestion(GameState.combat.activeQuestion);
     });
 
-    // 全選中文 / 清空課節按鈕
     document.getElementById('btn-check-all-units').addEventListener('click', () => {
         document.querySelectorAll('#ui-subject-checks input[type="checkbox"]').forEach(cb => {
             cb.checked = ALL_DEFAULT_UNITS.includes(cb.value);
@@ -2335,7 +1886,6 @@ function initVictoryAndQuizModals() {
         document.querySelectorAll('#ui-subject-checks input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     });
 
-    // 設定面板內：全螢幕切換、安裝 App、強制更新最新版本
     document.getElementById('btn-settings-fullscreen').addEventListener('click', toggleFullScreen);
 
     document.getElementById('btn-install-app').addEventListener('click', async () => {
@@ -2349,7 +1899,7 @@ function initVictoryAndQuizModals() {
     });
 
     document.getElementById('btn-force-update').addEventListener('click', async () => {
-        syncProgressToGameState(); // 先保存玩家進度
+        syncProgressToGameState();
         try {
             if ('serviceWorker' in navigator) {
                 const regs = await navigator.serviceWorker.getRegistrations();
@@ -2362,7 +1912,6 @@ function initVictoryAndQuizModals() {
         } catch (e) {
             console.warn(e);
         }
-        // 加上時間戳強制繞過瀏覽器快取，載入 GitHub Pages 最新版本
         const cleanUrl = window.location.origin + window.location.pathname;
         window.location.replace(`${cleanUrl}?v=${Date.now()}`);
     });
@@ -2395,7 +1944,6 @@ function initVictoryAndQuizModals() {
         GameState.settings.sfx = document.getElementById('chk-sfx').checked;
         GameState.settings.zhSpeed = parseFloat(document.getElementById('sel-zh-speed').value);
 
-        // 當課節範圍改變時，重置題目佇列以套用新範圍
         State.questionQueue = [];
 
         if (GameState.settings.bgm) {
@@ -2448,7 +1996,6 @@ function showVictoryModal() {
     State.gold += goldGain;
     State.skillPts += State.currentBattleIsBoss ? 2 : 1;
 
-    // 平衡升級速度：每次獲勝給予穩定經驗值，需約 4~5 場戰鬥升一級
     StateManager.addExp(35 + State.stageIdx * 10);
 
     document.getElementById('vic-gold-gain').innerText = goldGain;
@@ -2458,6 +2005,10 @@ function showVictoryModal() {
     const matBox = document.getElementById('vic-mat-drops');
     matBox.innerHTML = '';
     const drops = [...st.dropPool].sort(() => Math.random() - 0.5).slice(0, 3);
+    // 35% 機率額外掉落該章節的【傳說稀有素材】
+    if (st.rareDrop && (State.currentBattleIsBoss || Math.random() < 0.35)) {
+        drops.push(st.rareDrop);
+    }
     if (State.currentBattleIsBoss) {
         drops.push(st.bossDrop);
     }
@@ -2473,6 +2024,7 @@ function showVictoryModal() {
         const tag = document.createElement('div');
         tag.className = 'mat-pill';
         tag.style.gap = '6px';
+        if (m.rarity === 'epic') tag.style.background = '#fff2be';
         tag.innerHTML = `<span>${m.icon} ${m.name}</span><b>+${qty}</b>`;
         matBox.appendChild(tag);
 
