@@ -1,0 +1,783 @@
+/* ==========================================================================
+   《時光書境守護者》正式版像素字體與 UI 樣式表 (style.css)
+   ========================================================================== */
+   :root {
+    --book-bg: #ebd5b3;
+    --book-dk: #d3b88c;
+    --book-border: #3a2314;
+    --orange-top: #f5b064;
+    --orange-bot: #d98234;
+    --gold-top: #ffe082;
+    --gold-bot: #ffb300;
+    --blue-top: #5ca4c7;
+    --blue-bot: #37708f;
+    --font-pixel: 'DotGothic16', 'Noto Sans TC', 'Microsoft JhengHei', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    image-rendering: pixelated;
+    font-family: var(--font-pixel);
+    letter-spacing: 0.5px;
+}
+
+body {
+    background: #08090c;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-viewport {
+    width: 100%;
+    max-width: 960px;
+    aspect-ratio: 16 / 9;
+    max-height: 96vh;
+    position: relative;
+    border: 4px solid #000;
+    box-shadow: 0 0 0 3px #5d4037, 0 20px 50px rgba(0,0,0,0.95);
+    overflow: hidden;
+    background: #1d2b22;
+}
+
+.screen {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+.screen.active { display: flex; }
+.hidden { display: none !important; }
+
+/* ==========================================================================
+   畫面 1：遊戲首頁 (Title Screen)
+   ========================================================================== */
+#screen-title {
+    justify-content: center;
+    align-items: center;
+}
+#title-bg-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.title-center-box {
+    position: relative;
+    z-index: 5;
+    background: rgba(26, 16, 10, 0.88);
+    border: 4px solid #000;
+    box-shadow: inset 0 0 0 3px #c8a97e, 0 12px 30px rgba(0,0,0,0.85);
+    padding: 28px 46px;
+    text-align: center;
+    max-width: 600px;
+}
+.title-badge {
+    display: inline-block;
+    background: #7b1fa2;
+    color: #fff;
+    border: 2px solid #ce93d8;
+    padding: 2px 12px;
+    font-size: 12px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+.game-logo-text {
+    font-size: 44px;
+    font-weight: 900;
+    color: #ffe082;
+    text-shadow: 4px 4px 0 #000, -2px -2px 0 #3e2723;
+    margin-bottom: 8px;
+}
+.game-sub-text {
+    color: #ebd5b3;
+    font-size: 15px;
+    margin-bottom: 18px;
+}
+.save-preview-pill {
+    background: #2e4c38;
+    border: 2px solid #81c784;
+    color: #fff;
+    padding: 6px 16px;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+.title-menu-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+.px-gold-btn {
+    background: linear-gradient(to bottom, var(--gold-top), var(--gold-bot));
+    border: 3px solid #2b1408;
+    box-shadow: inset 0 2px 0 #fff8e1, 4px 4px 0 #000;
+    color: #1f0e05;
+    font-weight: 900;
+    cursor: pointer;
+}
+.btn-xl {
+    font-size: 19px;
+    padding: 10px 36px;
+    min-width: 260px;
+}
+.px-gold-btn:hover, .px-orange-action-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ==========================================================================
+   畫面 2：創角與初始職業選擇 (Screen-Create)
+   ========================================================================== */
+#screen-create {
+    background: radial-gradient(circle at center, #3a2618 0%, #160e08 100%);
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+}
+.create-card {
+    width: 92%;
+    max-width: 840px;
+    background: var(--book-bg);
+    border: 5px solid #241409;
+    box-shadow: inset 0 0 0 3px #c4a374, 0 12px 35px rgba(0,0,0,0.9);
+    padding: 18px 24px;
+    text-align: center;
+}
+.create-title {
+    font-size: 24px;
+    color: #241409;
+    margin-bottom: 10px;
+}
+.name-input-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+.name-input-row input {
+    font-size: 18px;
+    font-weight: 900;
+    padding: 5px 14px;
+    border: 3px solid #241409;
+    background: #fff;
+    width: 220px;
+    text-align: center;
+}
+.create-warn {
+    font-size: 13px;
+    background: #fff3e0;
+    border: 2px dashed #d84315;
+    color: #bf360c;
+    padding: 5px 12px;
+    margin-bottom: 12px;
+}
+.create-class-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.cls-select-card {
+    background: #fff7e6;
+    border: 3px solid #8d6e63;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: transform 0.12s;
+}
+.cls-select-card:hover { transform: translateY(-3px); }
+.cls-select-card.selected {
+    background: #fff2be;
+    border-color: #241409;
+    box-shadow: 0 5px 0 #241409, inset 0 0 0 2px #ffb300;
+}
+.cls-card-title { font-size: 16px; font-weight: 900; color: #241409; margin: 4px 0; }
+.cls-card-stats { font-size: 11px; color: #b71c1c; font-weight: 900; margin-bottom: 6px; }
+.cls-card-desc { font-size: 12px; color: #4e342e; line-height: 1.35; }
+.create-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ==========================================================================
+   畫面 3：地圖探索與戰鬥 HUD
+   ========================================================================== */
+#battle-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+.px-hero-hud {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    background: rgba(28, 17, 10, 0.92);
+    border: 3px solid #000;
+    box-shadow: inset 0 0 0 2px #8d6e63, 3px 3px 0 rgba(0,0,0,0.65);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 15;
+}
+.hud-class-badge {
+    width: 44px;
+    height: 44px;
+    background: #3e2723;
+    border: 2px solid #ffca28;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.hud-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+}
+.hud-lv {
+    background: #5d4037;
+    color: #ffe082;
+    padding: 1px 6px;
+    border: 1px solid #ffca28;
+    font-size: 12px;
+}
+.hud-combo {
+    background: #b71c1c;
+    color: #fff;
+    padding: 1px 6px;
+    border: 1px solid #ff8a80;
+    font-size: 12px;
+}
+.hud-sub-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ebd5b3;
+    font-size: 12px;
+    font-weight: bold;
+}
+.guild-mini-btn {
+    background: #6a1b9a;
+    color: #fff;
+    border: 1px solid #ce93d8;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+    margin-left: 4px;
+}
+
+/* 頂部地圖與遇敵警戒條 */
+.px-map-header {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 15;
+}
+.map-title-box {
+    background: rgba(24, 16, 10, 0.92);
+    border: 3px solid #000;
+    box-shadow: inset 0 0 0 2px #c8a97e, 3px 3px 0 rgba(0,0,0,0.6);
+    color: #ffecb3;
+    padding: 5px 18px;
+    font-size: 15px;
+    font-weight: 900;
+    text-align: center;
+}
+.danger-meter-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #ffcc80;
+    margin-top: 3px;
+}
+.danger-bar-bg {
+    width: 90px;
+    height: 8px;
+    background: #2b1408;
+    border: 1px solid #8d6e63;
+}
+.danger-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, #fbc02d, #e53935);
+    transition: width 0.2s;
+}
+.map-arrow-btn {
+    width: 30px;
+    height: 36px;
+    background: linear-gradient(to bottom, var(--orange-top), var(--orange-bot));
+    border: 3px solid #000;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+}
+
+.px-top-right-hud {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    text-align: right;
+    z-index: 15;
+}
+.px-turn-text {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000;
+    margin-bottom: 5px;
+}
+.px-top-icons { display: flex; gap: 6px; justify-content: flex-end; }
+.px-blue-sq-btn {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(to bottom, var(--blue-top), var(--blue-bot));
+    border: 3px solid #000;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), 2px 2px 0 #000;
+}
+
+/* 左下角探索十字鍵 */
+.explore-dpad-hud {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    z-index: 15;
+}
+.dpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 38px);
+    grid-template-rows: repeat(3, 38px);
+    gap: 3px;
+}
+.dpad-btn {
+    background: rgba(36, 22, 12, 0.9);
+    border: 2px solid #c8a97e;
+    color: #ffe082;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+}
+.dpad-btn:active { transform: translateY(2px); }
+.dpad-btn.up    { grid-column: 2; grid-row: 1; }
+.dpad-btn.left  { grid-column: 1; grid-row: 2; }
+.dpad-center    { grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); }
+.dpad-btn.right { grid-column: 3; grid-row: 2; }
+.dpad-btn.down  { grid-column: 2; grid-row: 3; }
+
+.explore-tip-pill {
+    background: rgba(24, 16, 10, 0.88);
+    border: 2px solid #8d6e63;
+    color: #ebd5b3;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* 左下角戰鬥技能與藥水欄 */
+.px-bottom-left-hud {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    z-index: 15;
+}
+.px-skill-slots-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.px-skill-box {
+    width: 54px;
+    height: 54px;
+    background: #5a222b;
+    border: 3px solid #1a0b0e;
+    box-shadow: inset 0 0 0 2px #b84a58, 3px 3px 0 #000;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.px-skill-box:hover { filter: brightness(1.18); transform: translateY(-2px); }
+.px-skill-cost {
+    position: absolute;
+    top: -17px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+    text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+}
+.px-belt-slots-row { display: flex; gap: 8px; }
+.px-belt-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #2f576e;
+    border: 3px solid #000;
+    box-shadow: inset 0 0 0 2px #6ab5db, 2px 2px 0 #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.px-cast-scroll {
+    position: absolute;
+    bottom: 18px;
+    left: 58%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    background: linear-gradient(to bottom, #f5b978, #e09953);
+    border: 3px solid #2b1408;
+    padding: 10px 38px;
+    text-align: center;
+    font-size: 21px;
+    font-weight: 900;
+    color: #1f0e05;
+    box-shadow: inset 0 2px 0 #ffd6a6, 0 5px 0 #000;
+    z-index: 20;
+}
+
+.px-bottom-right-hud {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 15;
+}
+.px-orange-rect-btn, .px-orange-ff-btn {
+    width: 78px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--orange-top), var(--orange-bot));
+    border: 3px solid #2b1408;
+    box-shadow: inset 0 2px 0 #ffd8a8, 3px 3px 0 #000;
+    font-size: 14px;
+    font-weight: 900;
+    color: #1f0e05;
+    cursor: pointer;
+}
+.px-orange-ff-btn {
+    height: 54px;
+    font-size: 24px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+}
+
+/* ==========================================================================
+   雙頁冒險書與各分頁樣式
+   ========================================================================== */
+.px-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 40;
+}
+.book-container { width: 86%; height: 88%; position: relative; }
+.book-side-bookmarks {
+    position: absolute;
+    left: -38px;
+    top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    z-index: 5;
+}
+.bookmark-tab {
+    width: 46px;
+    height: 40px;
+    background: #2f576e;
+    border: 3px solid #000;
+    color: #fff;
+    font-size: 17px;
+    cursor: pointer;
+    box-shadow: -2px 2px 0 #000;
+}
+.bookmark-tab.active { background: #5ca4c7; transform: translateX(-4px); }
+
+.px-open-book {
+    width: 100%;
+    height: 88%;
+    background: var(--book-bg);
+    border: 6px solid var(--book-border);
+    box-shadow: inset 0 0 0 4px #c7a97b, 0 14px 35px rgba(0,0,0,0.85);
+    display: flex;
+    position: relative;
+}
+.book-page { flex: 1; padding: 16px 20px; position: relative; overflow: hidden; }
+.book-center-fold { width: 12px; background: linear-gradient(to right, #c7a97b, #7d5b3b, #c7a97b); }
+.book-section-hdr {
+    font-size: 16px;
+    font-weight: 900;
+    color: #3a2314;
+    border-bottom: 3px solid #b89b72;
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+.book-view { display: none; height: 100%; }
+.book-view.active { display: flex; flex-direction: column; justify-content: space-between; }
+
+.paperdoll-wrapper { display: flex; justify-content: space-around; align-items: center; }
+.doll-cross-grid { display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(4, 45px); gap: 5px; }
+.pd-slot {
+    width: 45px;
+    height: 45px;
+    background: #d8c29d;
+    border: 2px solid #4a301d;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.slot-head     { grid-column: 2; grid-row: 1; }
+.slot-mainhand { grid-column: 1; grid-row: 2; }
+.slot-armor    { grid-column: 2; grid-row: 2; }
+.slot-offhand  { grid-column: 3; grid-row: 2; }
+.slot-gloves   { grid-column: 1; grid-row: 3; }
+.slot-legs     { grid-column: 2; grid-row: 3; }
+.slot-boots    { grid-column: 2; grid-row: 4; }
+.doll-acc-grid { display: grid; grid-template-columns: repeat(2, 45px); grid-template-rows: repeat(3, 45px); gap: 5px; }
+.slot-neck { grid-column: 1 / span 2; justify-self: center; }
+.blue-slot { background: #5b87c7; border-color: #1c335c; }
+.pd-belt-label { text-align: center; font-size: 12px; font-weight: 900; color: #3a2314; }
+.pd-belt-row { display: flex; justify-content: center; gap: 6px; }
+
+.bag-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.bag-sort-btn { width: 28px; height: 28px; background: #5ca4c7; border: 2px solid #000; color: #fff; font-weight: 900; cursor: pointer; }
+.bag-title-pill { background: #467891; color: #fff; border: 2px solid #182b36; padding: 2px 24px; font-size: 13px; font-weight: 900; }
+.bag-5x6-grid { display: grid; grid-template-columns: repeat(5, 44px); grid-template-rows: repeat(6, 39px); gap: 5px; justify-content: center; }
+.px-item-cell {
+    width: 44px;
+    height: 39px;
+    border: 2px solid #2b190e;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.45);
+}
+.px-item-cell:hover { outline: 2px solid #fff; z-index: 3; transform: scale(1.06); }
+.bg-green  { background: #7cb342; }
+.bg-blue   { background: #4fc3f7; }
+.bg-purple { background: #ba68c8; }
+.bg-orange { background: #ffb74d; }
+.bg-empty  { background: #d8c29d; }
+.cell-qty { position: absolute; left: 2px; bottom: 1px; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cell-plus { position: absolute; right: 2px; top: 1px; font-size: 10px; font-weight: 900; color: #76ff03; text-shadow: 1px 1px 0 #000; }
+.quick-hint { text-align: center; font-size: 12px; font-weight: 900; color: #3a2314; }
+.bag-pentagon-tabs { display: flex; justify-content: center; gap: 8px; }
+.pent-tab {
+    width: 32px;
+    height: 34px;
+    background: #376882;
+    color: #fff;
+    border: 2px solid #12242e;
+    font-weight: 900;
+    cursor: pointer;
+    clip-path: polygon(50% 0%, 100% 28%, 100% 100%, 0% 100%, 0% 28%);
+    padding-top: 6px;
+}
+.pent-tab.active { background: #64b5f6; color: #000; }
+
+/* 技能樹與鐵匠素材庫存 */
+.passive-grid-box { background: #dfd0ba; border: 2px solid #9e8565; padding: 8px; text-align: center; }
+.passive-header { font-size: 12px; font-weight: 900; color: #4a301d; margin-bottom: 6px; }
+.passive-slots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; justify-items: center; }
+.equipped-skill-row { display: flex; justify-content: center; gap: 8px; }
+.skill-top-bar { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 13px; }
+.skill-tree-canvas-wrap { position: relative; width: 100%; height: 280px; }
+.skill-lines-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.skill-nodes-layer { position: absolute; inset: 0; }
+.st-node {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    background: #c7b69e;
+    border: 3px solid #4a301d;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.st-node.active-node { background: #a8424d; border-color: #2b0c10; box-shadow: inset 0 0 0 2px #e06d79; }
+.st-node-pts { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 900; color: #2b190e; white-space: nowrap; }
+
+.smith-banner-card { background: #dfd0ba; border: 3px solid #4a301d; padding: 6px; display: flex; align-items: center; gap: 8px; }
+.smith-dialog { font-size: 11px; line-height: 1.35; color: #2b190e; }
+.mat-stock-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    max-height: 210px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+.mat-pill {
+    background: #fff7e6;
+    border: 2px solid #4a301d;
+    padding: 3px 6px;
+    font-size: 11px;
+    font-weight: 900;
+    display: flex;
+    justify-content: space-between;
+}
+.forge-recipe-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+}
+.forge-card {
+    background: #fff7e6;
+    border: 2px solid #4a301d;
+    padding: 7px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.px-item-tooltip {
+    position: absolute;
+    left: 25%;
+    top: 12%;
+    width: 245px;
+    background: #edd6b4;
+    border: 4px solid #241409;
+    box-shadow: inset 0 0 0 2px #c4a374, 6px 6px 0 rgba(0,0,0,0.7);
+    padding: 12px;
+    z-index: 35;
+    pointer-events: none;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.tt-header { font-size: 16px; font-weight: 900; color: #7b1fa2; margin-bottom: 4px; }
+.tt-sub { color: #3e2723; font-weight: bold; margin-bottom: 6px; }
+.tt-green { color: #2e7d32; font-weight: 900; }
+.tt-flavor { margin-top: 8px; padding-top: 6px; border-top: 2px solid #c4a374; color: #6d4c41; font-size: 11px; }
+
+.book-footer-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.px-return-btn {
+    background: linear-gradient(to bottom, var(--blue-top), var(--blue-bot));
+    border: 3px solid #000;
+    padding: 8px 24px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 #000;
+}
+.px-coins-bar { background: rgba(0,0,0,0.75); color: #fff; padding: 6px 18px; border: 2px solid #000; display: flex; gap: 16px; font-weight: 900; }
+.click-outside-hint { color: #fff; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 0 #000; }
+
+/* 勝利與答題視窗 */
+.vic-main-title { color: #fff; font-size: 36px; font-weight: 900; text-shadow: 3px 3px 0 #000; margin-bottom: 10px; }
+.vic-layout { display: flex; gap: 16px; align-items: flex-end; }
+.vic-left-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.vic-avatar-frame { width: 128px; height: 112px; background: #eec199; border: 4px solid #3a2010; box-shadow: inset 0 0 0 4px #c7926b, 4px 4px 0 #000; display: flex; align-items: center; justify-content: center; }
+.vic-exp-card { width: 240px; background: #d8a57e; border: 4px solid #3a2010; box-shadow: inset 0 0 0 3px #b57d56, 4px 4px 0 #000; padding: 12px 16px; text-align: center; font-weight: 900; }
+.vic-label { font-size: 14px; color: #2b1408; margin-bottom: 6px; }
+.vic-bar-bg { height: 18px; background: #422618; border: 2px solid #1a0d06; position: relative; margin-bottom: 8px; }
+.vic-bar-fill { height: 100%; background: #26a69a; transition: width 0.5s; }
+.vic-bar-num { position: absolute; inset: 0; color: #fff; font-size: 11px; line-height: 14px; text-shadow: 1px 1px 0 #000; }
+.vic-coin-row { display: flex; justify-content: center; gap: 18px; font-size: 14px; }
+.vic-right-col { display: flex; flex-direction: column; gap: 8px; width: 420px; }
+.vic-panel-consumed, .vic-panel-loot { background: #d8a57e; border: 4px solid #3a2010; box-shadow: inset 0 0 0 3px #b57d56, 4px 4px 0 #000; padding: 8px 12px; }
+.vic-sub-header { text-align: center; font-size: 13px; font-weight: 900; color: #2b1408; margin-bottom: 6px; }
+.vic-consumed-row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; min-height: 36px; align-items: center; }
+.vic-loot-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
+.vic-btn-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.px-orange-action-btn {
+    flex: 1;
+    background: linear-gradient(to bottom, var(--orange-top), var(--orange-bot));
+    border: 3px solid #2b1408;
+    box-shadow: inset 0 2px 0 #ffd8a8, 3px 3px 0 #000;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 900;
+    color: #1f0e05;
+    cursor: pointer;
+}
+
+.px-quiz-card {
+    width: 84%;
+    max-width: 680px;
+    background: var(--book-bg);
+    border: 5px solid #241409;
+    box-shadow: inset 0 0 0 3px #c4a374, 10px 10px 0 rgba(0,0,0,0.85);
+    padding: 18px 22px;
+}
+.quiz-header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #4a301d; padding-bottom: 8px; margin-bottom: 12px; font-size: 18px; font-weight: 900; color: #241409; }
+.quiz-header-btns { display: flex; gap: 8px; }
+.quiz-prompt-box {
+    background: #fffdf7;
+    border: 3px solid #4a301d;
+    padding: 20px;
+    font-size: 23px;
+    font-weight: 900;
+    color: #1a0e06;
+    text-align: center;
+    min-height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    line-height: 1.45;
+}
+.quiz-options-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.quiz-ans-btn {
+    background: #fff;
+    border: 3px solid #241409;
+    padding: 13px 16px;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #241409;
+    text-align: left;
+}
+.quiz-ans-btn:hover { background: #fff2be; }
+.quiz-ans-btn.correct { background: #43a047 !important; color: #fff; }
+.quiz-ans-btn.wrong { background: #e53935 !important; color: #fff; }
+
+.settings-content { display: flex; flex-direction: column; gap: 10px; font-size: 14px; font-weight: bold; }
+.set-block { background: #fff7e6; border: 2px solid #4a301d; padding: 10px; }
+.set-sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.set-flex-row { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
