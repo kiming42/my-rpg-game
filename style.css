@@ -1,5 +1,5 @@
 /* ==========================================================================
-   《時光書境守護者》防重疊響應式 UI 與技能冷卻樣式表 (style.css)
+   《時光書境守護者》完整專業版樣式表 (style.css)
    ========================================================================== */
 :root {
     --book-bg: #ebd5b3;
@@ -57,17 +57,17 @@ body {
 .hidden { display: none !important; }
 
 /* ==========================================================================
-   畫面 1 & 2：遊戲首頁與創角
+   首頁與創角
    ========================================================================== */
 #screen-title { justify-content: center; align-items: center; }
 #title-bg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .title-center-box {
     position: relative;
     z-index: 5;
-    background: rgba(26, 16, 10, 0.9);
+    background: rgba(26, 16, 10, 0.92);
     border: 4px solid #000;
     box-shadow: inset 0 0 0 3px #c8a97e, 0 12px 30px rgba(0,0,0,0.85);
-    padding: 24px 40px;
+    padding: 20px 36px;
     text-align: center;
     max-width: 580px;
 }
@@ -79,25 +79,34 @@ body {
     padding: 2px 12px;
     font-size: 12px;
     font-weight: 900;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 .game-logo-text {
-    font-size: 40px;
+    font-size: 38px;
     font-weight: 900;
     color: #ffe082;
     text-shadow: 4px 4px 0 #000, -2px -2px 0 #3e2723;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
-.game-sub-text { color: #ebd5b3; font-size: 14px; margin-bottom: 16px; }
+.game-sub-text { color: #ebd5b3; font-size: 13px; margin-bottom: 10px; }
+.orientation-tip-box {
+    background: #4a148c;
+    border: 2px solid #e1bee7;
+    color: #fff;
+    font-size: 11px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    line-height: 1.35;
+}
 .save-preview-pill {
     background: #2e4c38;
     border: 2px solid #81c784;
     color: #fff;
-    padding: 6px 14px;
-    font-size: 13px;
-    margin-bottom: 14px;
+    padding: 5px 12px;
+    font-size: 12px;
+    margin-bottom: 10px;
 }
-.title-menu-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.title-menu-btns { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 
 .px-gold-btn {
     background: linear-gradient(to bottom, var(--gold-top), var(--gold-bot));
@@ -107,7 +116,7 @@ body {
     font-weight: 900;
     cursor: pointer;
 }
-.btn-xl { font-size: 18px; padding: 9px 32px; min-width: 240px; }
+.btn-xl { font-size: 17px; padding: 8px 28px; min-width: 240px; }
 .px-gold-btn:hover, .px-orange-action-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
 #screen-create {
@@ -138,7 +147,7 @@ body {
 .create-footer { display: flex; justify-content: space-between; align-items: center; }
 
 /* ==========================================================================
-   畫面 3：頂部三欄式防重疊導航列 (Top HUD Bar)
+   頂部導航列
    ========================================================================== */
 #battle-canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
 
@@ -156,7 +165,6 @@ body {
 }
 .top-hud-bar > * { pointer-events: auto; }
 
-/* 左上角色銘牌 (緊湊防撞設計) */
 .px-hero-hud {
     background: rgba(28, 17, 10, 0.92);
     border: 3px solid #000;
@@ -185,14 +193,7 @@ body {
 .guild-mini-btn { background: #6a1b9a; color: #fff; border: 1px solid #ce93d8; padding: 1px 5px; font-size: 10px; font-weight: 900; cursor: pointer; }
 .cls-pill { background: #3e2723; color: #ffe082; border: 1px solid #ffca28; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
 
-/* 中央章節與進度條 (自動彈性縮放，永不與左右重疊) */
-.px-map-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex: 0 1 auto;
-    max-width: 380px;
-}
+.px-map-header { display: flex; align-items: center; gap: 4px; flex: 0 1 auto; max-width: 380px; }
 .map-title-box {
     background: rgba(24, 16, 10, 0.92);
     border: 3px solid #000;
@@ -217,7 +218,6 @@ body {
     box-shadow: 2px 2px 0 #000;
 }
 
-/* 右上角工具列 */
 .px-top-right-hud { text-align: right; flex-shrink: 0; }
 .px-turn-text { color: #fff; font-size: 16px; font-weight: 900; text-shadow: 2px 2px 0 #000; margin-bottom: 4px; }
 .px-top-icons { display: flex; gap: 4px; justify-content: flex-end; }
@@ -233,24 +233,9 @@ body {
     box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), 2px 2px 0 #000;
 }
 
-/* 左下角探索提示 (無十字鍵) */
-.explore-hint-hud {
-    position: absolute;
-    left: 14px;
-    bottom: 12px;
-    z-index: 15;
-    pointer-events: none;
-}
-.explore-tip-pill {
-    background: rgba(24, 16, 10, 0.88);
-    border: 2px solid #8d6e63;
-    color: #ebd5b3;
-    padding: 5px 12px;
-    font-size: 12px;
-    font-weight: bold;
-}
+.explore-hint-hud { position: absolute; left: 14px; bottom: 12px; z-index: 15; pointer-events: none; }
+.explore-tip-pill { background: rgba(24, 16, 10, 0.88); border: 2px solid #8d6e63; color: #ebd5b3; padding: 5px 12px; font-size: 12px; font-weight: bold; }
 
-/* 左下角戰鬥技能與冷卻時間 (CD) 遮罩 */
 .px-bottom-left-hud { position: absolute; left: 16px; bottom: 14px; z-index: 15; }
 .px-skill-slots-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .px-skill-box {
@@ -266,34 +251,9 @@ body {
     justify-content: center;
 }
 .px-skill-box:hover { filter: brightness(1.15); transform: translateY(-2px); }
-.px-skill-box.on-cooldown {
-    filter: grayscale(0.85);
-    cursor: not-allowed;
-}
-.px-skill-cost {
-    position: absolute;
-    top: -16px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 900;
-    text-shadow: 1px 1px 0 #000;
-}
-.skill-cd-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    color: #ffeb3b;
-    font-size: 12px;
-    font-weight: 900;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-shadow: 1px 1px 0 #000;
-}
+.px-skill-box.on-cooldown { filter: grayscale(0.85); cursor: not-allowed; }
+.px-skill-cost { position: absolute; top: -16px; left: 0; width: 100%; text-align: center; color: #fff; font-size: 10px; font-weight: 900; text-shadow: 1px 1px 0 #000; }
+.skill-cd-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.75); color: #ffeb3b; font-size: 12px; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; text-shadow: 1px 1px 0 #000; }
 
 .px-belt-slots-row { display: flex; gap: 8px; }
 .px-belt-circle {
@@ -333,7 +293,7 @@ body {
     height: 38px;
     background: linear-gradient(to bottom, var(--orange-top), var(--orange-bot));
     border: 3px solid #2b1408;
-    box-shadow: inset 0 2px 0 #ffd8a8, 3px 3px 0 #000;
+    box-shadow: inset 0 2px 0 #ffd8a8, 2px 2px 0 #000;
     font-size: 14px;
     font-weight: 900;
     color: #1f0e05;
@@ -342,12 +302,12 @@ body {
 .px-orange-ff-btn { height: 50px; font-size: 22px; color: #fff; text-shadow: 2px 2px 0 #000; }
 
 /* ==========================================================================
-   雙頁冒險書 (修正手機版高度溢出，確保背包 1~5 分頁永遠可見)
+   雙頁冒險書 (含書本頂部返回按鈕、附圖 2 紙娃娃壓紋與 5層分支技能樹)
    ========================================================================== */
 .px-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.78);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -355,12 +315,31 @@ body {
     z-index: 40;
 }
 .book-container {
-    width: 90%;
-    height: 92%;
+    width: 92%;
+    height: 94%;
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+}
+.book-top-action-bar {
+    position: absolute;
+    top: -38px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+.px-return-btn-top {
+    background: linear-gradient(to bottom, var(--orange-top), var(--orange-bot));
+    border: 3px solid #000;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 6px 28px;
+    color: #1f0e05;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 -3px 0 rgba(0,0,0,0.6);
 }
 .book-side-bookmarks {
     position: absolute;
@@ -387,8 +366,8 @@ body {
     flex: 1;
     min-height: 0;
     background: var(--book-bg);
-    border: 5px solid var(--book-border);
-    box-shadow: inset 0 0 0 3px #c7a97b, 0 10px 25px rgba(0,0,0,0.85);
+    border: 6px solid var(--book-border);
+    box-shadow: inset 0 0 0 3px #c7a97b, 0 12px 30px rgba(0,0,0,0.85);
     display: flex;
     position: relative;
 }
@@ -401,7 +380,7 @@ body {
     min-height: 0;
     overflow: hidden;
 }
-.book-center-fold { width: 10px; background: linear-gradient(to right, #c7a97b, #7d5b3b, #c7a97b); }
+.book-center-fold { width: 12px; background: linear-gradient(to right, #c7a97b, #7d5b3b, #c7a97b); }
 .book-section-hdr {
     font-size: 14px;
     font-weight: 900;
@@ -415,33 +394,85 @@ body {
 .book-view { display: none; height: 100%; min-height: 0; }
 .book-view.active { display: flex; flex-direction: column; justify-content: space-between; }
 
+/* 附圖 2 風格：紙娃娃壓紋十字裝備欄 (8格防具/武器 + 5格飾品) */
 .paperdoll-wrapper { display: flex; justify-content: space-around; align-items: center; flex: 1; min-height: 0; }
-.doll-cross-grid { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(4, 40px); gap: 4px; }
+.doll-cross-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 38px);
+    grid-template-rows: repeat(4, 38px);
+    gap: 3px;
+}
 .pd-slot {
-    width: 40px;
-    height: 40px;
-    background: #d8c29d;
-    border: 2px solid #4a301d;
+    width: 38px;
+    height: 38px;
+    background: #c8b28f;
+    border: 2px solid #5d4037;
     box-shadow: inset 0 2px 0 rgba(255,255,255,0.45);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    position: relative;
 }
+.pd-slot img { max-width: 80%; max-height: 80%; object-fit: contain; }
 .slot-head     { grid-column: 2; grid-row: 1; }
 .slot-mainhand { grid-column: 1; grid-row: 2; }
 .slot-armor    { grid-column: 2; grid-row: 2; }
 .slot-offhand  { grid-column: 3; grid-row: 2; }
-.slot-gloves   { grid-column: 1; grid-row: 3; }
+.slot-gloves-l { grid-column: 1; grid-row: 3; }
 .slot-legs     { grid-column: 2; grid-row: 3; }
+.slot-gloves-r { grid-column: 3; grid-row: 3; }
 .slot-boots    { grid-column: 2; grid-row: 4; }
-.doll-acc-grid { display: grid; grid-template-columns: repeat(2, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; }
+
+.doll-acc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 40px);
+    grid-template-rows: repeat(3, 40px);
+    gap: 4px;
+}
 .slot-neck { grid-column: 1 / span 2; justify-self: center; }
 .blue-slot { background: #5b87c7; border-color: #1c335c; }
 .pd-belt-label { text-align: center; font-size: 11px; font-weight: 900; color: #3a2314; margin: 2px 0; }
 .pd-belt-row { display: flex; justify-content: center; gap: 6px; }
 
-/* 右頁背包：將 1~5 分頁移至上方明顯處，並支援格仔自適應縮放 */
+/* 附圖 1 風格：5層分支技能樹佈局 */
+.skill-tree-top-bar { display: flex; justify-content: space-between; align-items: center; font-weight: 900; font-size: 13px; flex-shrink: 0; margin-bottom: 4px; }
+.skill-tree-canvas-wrap { position: relative; width: 100%; flex: 1; min-height: 0; background: #dfd0ba; border: 2px solid #9e8565; }
+.skill-tree-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.skill-tree-nodes-layer { position: absolute; inset: 0; }
+.st-node-card {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    background: #d8c29d;
+    border: 3px solid #4a301d;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+.st-node-card.unlocked {
+    background: #a8424d;
+    border-color: #2b0c10;
+    box-shadow: inset 0 0 0 2px #e06d79, 2px 2px 0 rgba(0,0,0,0.5);
+}
+.st-node-card img { max-width: 75%; max-height: 75%; object-fit: contain; }
+.st-node-badge {
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 900;
+    color: #2b190e;
+    background: #fff;
+    padding: 1px 3px;
+    border: 1px solid #4a301d;
+    white-space: nowrap;
+}
+
 .bag-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-shrink: 0; }
 .bag-title-pill { background: #467891; color: #fff; border: 2px solid #182b36; padding: 2px 10px; font-size: 12px; font-weight: 900; }
 
@@ -462,12 +493,7 @@ body {
     cursor: pointer;
     text-align: center;
 }
-.pent-tab.active {
-    background: #ffca28;
-    color: #1f0e05;
-    border-color: #000;
-    box-shadow: inset 0 2px 0 #fff8e1;
-}
+.pent-tab.active { background: #ffca28; color: #1f0e05; border-color: #000; box-shadow: inset 0 2px 0 #fff8e1; }
 
 .bag-5x6-grid {
     display: grid;
@@ -527,19 +553,35 @@ body {
 }
 .forge-card { background: #fff7e6; border: 2px solid #4a301d; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
 
+/* 物品介紹彈窗 (Tooltip) —— 內含 ✖ 關閉按鈕 */
 .px-item-tooltip {
     position: absolute;
-    left: 24%;
+    left: 20%;
     top: 10%;
-    width: 240px;
+    width: 260px;
     background: #edd6b4;
     border: 4px solid #241409;
     box-shadow: inset 0 0 0 2px #c4a374, 6px 6px 0 rgba(0,0,0,0.7);
-    padding: 10px;
-    z-index: 35;
-    pointer-events: none;
+    padding: 12px 10px 10px 10px;
+    z-index: 50;
     font-size: 11px;
     line-height: 1.4;
+}
+.tt-close-x {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    background: #c62828;
+    color: #fff;
+    border: 2px solid #000;
+    font-size: 11px;
+    font-weight: 900;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .tt-header { font-size: 14px; font-weight: 900; color: #7b1fa2; margin-bottom: 3px; }
 .tt-sub { color: #3e2723; font-weight: bold; margin-bottom: 4px; }
@@ -547,20 +589,10 @@ body {
 .tt-flavor { margin-top: 6px; padding-top: 4px; border-top: 2px solid #c4a374; color: #6d4c41; font-size: 10px; }
 
 .book-footer-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-shrink: 0; }
-.px-return-btn {
-    background: linear-gradient(to bottom, var(--blue-top), var(--blue-bot));
-    border: 3px solid #000;
-    padding: 6px 20px;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 900;
-    cursor: pointer;
-    box-shadow: 2px 2px 0 #000;
-}
 .px-coins-bar { background: rgba(0,0,0,0.78); color: #fff; padding: 5px 14px; border: 2px solid #000; display: flex; gap: 14px; font-size: 13px; font-weight: 900; }
 
 /* ==========================================================================
-   勝利、答題與全新設定視窗樣式
+   勝利與設定視窗
    ========================================================================== */
 .vic-main-title { color: #fff; font-size: 32px; font-weight: 900; text-shadow: 3px 3px 0 #000; margin-bottom: 8px; }
 .vic-layout { display: flex; gap: 14px; align-items: flex-end; }
@@ -645,7 +677,6 @@ body {
 .quiz-ans-btn.correct { background: #43a047 !important; color: #fff; }
 .quiz-ans-btn.wrong { background: #e53935 !important; color: #fff; }
 
-/* 設定視窗美化排版 */
 .settings-modal-box { max-width: 620px; }
 .settings-content { display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-weight: bold; overflow-y: auto; padding-right: 4px; }
 .set-block { background: #fff7e6; border: 2px solid #4a301d; padding: 8px 10px; }
@@ -657,15 +688,5 @@ body {
 .set-flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .set-app-bar { display: flex; gap: 8px; justify-content: space-between; }
 
-.settings-footer {
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 2px solid #b89b72;
-    text-align: center;
-}
-.btn-save-large {
-    width: 100%;
-    padding: 10px 24px;
-    font-size: 16px;
-    letter-spacing: 1px;
-}
+.settings-footer { margin-top: 10px; padding-top: 8px; border-top: 2px solid #b89b72; text-align: center; }
+.btn-save-large { width: 100%; padding: 10px 24px; font-size: 16px; letter-spacing: 1px; }
