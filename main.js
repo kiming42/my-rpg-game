@@ -94,7 +94,27 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredInstallPrompt = e;
 });
 
+// 全自動螢幕等比例縮放引擎：適配任何手機、平板、電腦、全螢幕與非全螢幕
+function autoFitViewport() {
+    const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    // 預留 6px 邊距，確保外框陰影與按鈕永遠不會貼邊或被切掉
+    const scaleX = (vw - 6) / 960;
+    const scaleY = (vh - 6) / 540;
+    const scale = Math.max(0.2, Math.min(scaleX, scaleY));
+    document.documentElement.style.setProperty('--game-scale', scale.toFixed(4));
+}
+
+window.addEventListener('resize', autoFitViewport);
+window.addEventListener('orientationchange', () => setTimeout(autoFitViewport, 150));
+document.addEventListener('fullscreenchange', () => setTimeout(autoFitViewport, 100));
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', autoFitViewport);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    autoFitViewport(); // 啟動時立即計算最佳縮放比例
+
     canvas = document.getElementById('battle-canvas');
     ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
