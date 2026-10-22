@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="書境守護者">
+    <meta name="theme-color" content="#140c24">
+    <title>時光書境守護者 - 中英科全科戰略版</title>
+
+    <!-- 📱 專屬像素聖劍魔法書 App Icon (支援 iOS 主畫面與 Android/電腦書籤) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23241409'/%3E%3Crect x='4' y='4' width='56' height='56' rx='10' fill='%234a148c' stroke='%23ffca28' stroke-width='4'/%3E%3Crect x='14' y='14' width='36' height='38' rx='3' fill='%23ebd5b3' stroke='%23000' stroke-width='3'/%3E%3Crect x='14' y='14' width='8' height='38' fill='%23c62828' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M32 10 L36 38 L28 38 Z' fill='%234fc3f7' stroke='%23000' stroke-width='2'/%3E%3Crect x='24' y='38' width='16' height='5' fill='%23ffca28' stroke='%23000' stroke-width='2'/%3E%3Crect x='29' y='43' width='6' height='10' fill='%238d6e63' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23241409'/%3E%3Crect x='4' y='4' width='56' height='56' rx='10' fill='%234a148c' stroke='%23ffca28' stroke-width='4'/%3E%3Crect x='14' y='14' width='36' height='38' rx='3' fill='%23ebd5b3' stroke='%23000' stroke-width='3'/%3E%3Crect x='14' y='14' width='8' height='38' fill='%23c62828' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M32 10 L36 38 L28 38 Z' fill='%234fc3f7' stroke='%23000' stroke-width='2'/%3E%3Crect x='24' y='38' width='16' height='5' fill='%23ffca28' stroke='%23000' stroke-width='2'/%3E%3Crect x='29' y='43' width='6' height='10' fill='%238d6e63' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div id="game-viewport">
+
+    <!-- ==========================================================
+         畫面 1：遊戲首頁 (Title Screen)
+         ========================================================== -->
+    <section id="screen-title" class="screen active">
+        <canvas id="title-bg-canvas" width="960" height="540"></canvas>
+        <div class="title-center-box">
+            <div class="title-badge">NEW GAME+ PIXEL RPG</div>
+            <h1 class="game-logo-text">時光書境守護者</h1>
+            <p class="game-sub-text">中英科全科題庫・看圖情境題・5層分支技能樹</p>
+
+            <div class="orientation-tip-box">
+                📱 <b>流暢體驗提示：</b>建議將手機<b>橫向旋轉</b>並點擊下方按鈕開啟全螢幕！
+            </div>
+
+            <div id="title-save-info" class="save-preview-pill hidden">
+                📜 上次進度：<b id="save-hero-summary">Justin (Lv.1 重裝劍士)</b>
+            </div>
+
+            <div class="title-menu-btns">
+                <button id="btn-continue-game" class="px-gold-btn btn-xl hidden">▶️ 繼續上次遊戲</button>
+                <button id="btn-new-game" class="px-orange-action-btn btn-xl">🌟 展開新遊戲</button>
+                <button id="btn-title-fullscreen" class="px-blue-action-btn btn-xl" style="width: 100%; max-width: 260px;">⛶ 開啟全螢幕模式</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================
+         畫面 2：創角與初始職業選擇 (New Game Setup)
+         ========================================================== -->
+    <section id="screen-create" class="screen">
+        <div class="create-card">
+            <h2 class="create-title">📜 登記守護者契約</h2>
+            <div class="name-input-row">
+                <label for="create-hero-name">守護者名稱：</label>
+                <input type="text" id="create-hero-name" value="Justin" maxlength="10" placeholder="輸入角色名稱..." />
+            </div>
+
+            <p class="create-warn">⚠️ 每章需擊敗 <b>20 次小怪隊伍</b> 方可解封章節 BOSS！日後轉職需支付 <b>🟡 500 金幣 ＋ 💎 5 技能點</b>。</p>
+
+            <div class="create-class-grid" id="create-class-grid">
+                <div class="cls-select-card selected" data-cls="warrior">
+                    <canvas class="cls-preview-cv" data-sprite="hero_warrior" width="60" height="60"></canvas>
+                    <div class="cls-card-title">🛡️ 重裝劍士</div>
+                    <div class="cls-card-stats">HP: 145 ｜ ATK: 15 ｜ DEF: 11</div>
+                    <div class="cls-card-desc">武器限制：只能裝備【劍士專用劍與盾】<br>5層分支技能樹解鎖防禦與重擊！</div>
+                </div>
+                <div class="cls-select-card" data-cls="mage">
+                    <canvas class="cls-preview-cv" data-sprite="hero_mage" width="60" height="60"></canvas>
+                    <div class="cls-card-title">🪄 元素法師</div>
+                    <div class="cls-card-stats">HP: 105 ｜ ATK: 20 ｜ DEF: 6</div>
+                    <div class="cls-card-desc">武器限制：只能裝備【法師專用杖與法球】<br>5層分支技能樹解鎖強大群體禁咒！</div>
+                </div>
+                <div class="cls-select-card" data-cls="ranger">
+                    <canvas class="cls-preview-cv" data-sprite="hero_ranger" width="60" height="60"></canvas>
+                    <div class="cls-card-title">🏹 尋寶遊俠</div>
+                    <div class="cls-card-stats">HP: 120 ｜ ATK: 17 ｜ DEF: 8</div>
+                    <div class="cls-card-desc">武器限制：只能裝備【遊俠專用弓與短匕】<br>5層分支技能樹解鎖極速連擊與暴擊！</div>
+                </div>
+                <div class="cls-select-card" data-cls="cleric">
+                    <canvas class="cls-preview-cv" data-sprite="hero_cleric" width="60" height="60"></canvas>
+                    <div class="cls-card-title">🌿 聖言神官</div>
+                    <div class="cls-card-stats">HP: 135 ｜ ATK: 14 ｜ DEF: 9</div>
+                    <div class="cls-card-desc">武器限制：只能裝備【神官專用權杖與聖典】<br>5層分支技能樹解鎖聖光治癒與審判！</div>
+                </div>
+            </div>
+
+            <div class="create-footer">
+                <button id="btn-back-title" class="px-return-btn">◀ 返回首頁</button>
+                <button id="btn-confirm-create" class="px-gold-btn btn-xl">⚔️ 確認契約・踏入書境！</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================
+         畫面 3：六大章節像素地圖探索與 3~5 魔物軍團戰場
+         ========================================================== -->
+    <section id="screen-game" class="screen">
+        <canvas id="battle-canvas" width="960" height="540"></canvas>
+
+        <!-- ⬆️ 頂部防重疊三欄式導航列 -->
+        <header class="top-hud-bar">
+            <div class="px-hero-hud">
+                <div class="hud-class-badge" id="ui-class-badge" title="點擊前往轉職聖殿">🛡️</div>
+                <div class="hud-info-col">
+                    <div class="hud-title-row">
+                        <span class="hud-name" id="ui-hero-name">Justin</span>
+                        <span class="hud-lv">Lv.<b id="ui-hero-lv">1</b></span>
+                        <span class="hud-lv" id="ui-loop-badge" style="background:#4a148c; border-color:#ce93d8;">第1周目</span>
+                        <span class="hud-combo" id="ui-combo-tag">🔥0</span>
+                    </div>
+                    <div class="hud-sub-row">
+                        <span id="ui-class-name-txt">重裝劍士</span>
+                        <span>｜⚔️<b id="ui-stat-atk">20</b> 🛡️<b id="ui-stat-def">15</b></span>
+                        <button class="guild-mini-btn" id="btn-open-guild" title="前往轉職聖殿">🔄轉職</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-map-header">
+                <button class="map-arrow-btn" id="btn-prev-map" title="前往上一章地圖">◀</button>
+                <div class="map-title-box">
+                    <div id="ui-map-title">🌿 第一章：晨曦微風草原</div>
+                    <div class="danger-meter-wrap" id="ui-explore-bar">
+                        <span id="ui-boss-prog-txt" style="color:#ffca28; font-weight:900;">💀 討伐: 0/20</span>
+                        <span>｜🐾 警戒:</span>
+                        <div class="danger-bar-bg"><div class="danger-bar-fill" id="ui-danger-fill" style="width: 15%;"></div></div>
+                    </div>
+                </div>
+                <button class="map-arrow-btn" id="btn-next-map" title="擊敗本章 BOSS 後解鎖下一章">▶</button>
+            </div>
+
+            <div class="px-top-right-hud">
+                <div class="px-turn-text" id="ui-mode-indicator">🗺️ 探索模式</div>
+                <div class="px-top-icons">
+                    <button class="px-blue-sq-btn" id="btn-open-equip" title="分類背包與擴充容量">🎒</button>
+                    <button class="px-blue-sq-btn" id="btn-open-skill" title="5層分支技能樹">✨</button>
+                    <button class="px-blue-sq-btn" id="btn-open-forge" title="武器/護具/飾品分類鍛造">🔨</button>
+                    <button class="px-blue-sq-btn" id="btn-open-settings" title="中英科課題選擇、安裝與更新">⚙️</button>
+                    <button class="px-blue-sq-btn" id="btn-fullscreen" title="切換全螢幕模式">⛶</button>
+                    <button class="px-blue-sq-btn" id="btn-go-title" title="返回遊戲首頁">🏠</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ↙️ 左下角 (A)：探索模式輕量提示 -->
+        <div id="hud-explore-controls" class="explore-hint-hud">
+            <div class="explore-tip-pill">👆 點擊地圖行走｜右上 ⚙️ 可自由勾選【📘中文】【🔤英文】【🔬科學 120題】！</div>
+        </div>
+
+        <!-- ↙️ 左下角 (B)：主動技能紅框槽 + 藥水腰帶圓槽 -->
+        <div id="hud-combat-controls" class="px-bottom-left-hud hidden">
+            <div class="px-skill-slots-row" id="ui-active-skills"></div>
+            <div class="px-belt-slots-row" id="ui-belt-potions"></div>
+        </div>
+
+        <!-- ⬇️ 下方中央：出招名稱 / 輪流攻擊提示橫幅 -->
+        <div id="ui-cast-scroll" class="px-cast-scroll hidden">
+            <span id="ui-cast-name">⚡ 遭遇野生魔物襲擊！</span>
+        </div>
+
+        <!-- ↘️ 右下角：探索互動 / 戰鬥出招按鈕 -->
+        <div class="px-bottom-right-hud">
+            <button class="px-orange-rect-btn" id="btn-flee-or-search">🔍 尋敵</button>
+            <button class="px-orange-ff-btn" id="btn-cast-turn" title="點擊答題施放技能">⚔️</button>
+        </div>
+    </section>
+
+    <!-- ==========================================================
+         彈窗 1：雙頁策略冒險書
+         ========================================================== -->
+    <div id="modal-book" class="px-overlay hidden">
+        <div class="book-container">
+
+            <div class="book-top-action-bar">
+                <button class="px-return-btn-top" id="btn-close-book">◀ 返回書境探索</button>
+            </div>
+
+            <div class="book-side-bookmarks">
+                <button class="bookmark-tab active" data-tab="equip" title="分類背包與容量擴充">🎒</button>
+                <button class="bookmark-tab" data-tab="skill" title="5層分支技能樹">✨</button>
+                <button class="bookmark-tab" data-tab="forge" title="武器/護具/飾品分類鍛造">🔨</button>
+                <button class="bookmark-tab" data-tab="guild" title="守護者轉職聖殿">🔄</button>
+                <button class="bookmark-tab" data-tab="mistake" title="錯題煉金爐">📝</button>
+            </div>
+
+            <div class="px-open-book">
+                <!-- ================= 左頁 ================= -->
+                <div class="book-page page-left">
+
+                    <div id="view-left-equip" class="book-view active">
+                        <div class="book-section-hdr">🛡️ 守護者裝備配置 (點擊已穿戴裝備可卸下)</div>
+                        <div class="paperdoll-wrapper">
+                            <div class="doll-cross-grid">
+                                <div class="pd-slot slot-head" data-slot="head" title="頭盔"></div>
+                                <div class="pd-slot slot-mainhand" data-slot="weapon" title="主手武器"></div>
+                                <div class="pd-slot slot-armor" data-slot="armor" title="胸甲"></div>
+                                <div class="pd-slot slot-offhand" data-slot="offhand" title="副手武器/盾牌"></div>
+                                <div class="pd-slot slot-gloves-l" data-slot="gloves_l" title="左護手"></div>
+                                <div class="pd-slot slot-legs" data-slot="legs" title="護腿"></div>
+                                <div class="pd-slot slot-gloves-r" data-slot="gloves_r" title="右護手"></div>
+                                <div class="pd-slot slot-boots" data-slot="boots" title="戰靴"></div>
+                            </div>
+                            <div class="doll-acc-grid">
+                                <div class="pd-slot slot-neck" data-slot="neck" title="項鍊"></div>
+                                <div class="pd-slot slot-ring blue-slot" data-slot="ring1" title="戒指 1"></div>
+                                <div class="pd-slot slot-ring blue-slot" data-slot="ring2" title="戒指 2"></div>
+                                <div class="pd-slot slot-relic1" data-slot="relic1" title="遺物 1"></div>
+                                <div class="pd-slot slot-relic2" data-slot="relic2" title="遺物 2"></div>
+                            </div>
+                        </div>
+                        <div class="pd-belt-label">腰帶道具槽 (6 圓槽)</div>
+                        <div class="pd-belt-row" id="book-belt-slots"></div>
+                    </div>
+
+                    <div id="view-left-skill" class="book-view">
+                        <div class="book-section-hdr">✨ 職業專屬技能配置</div>
+                        <div class="passive-grid-box" style="padding:10px; text-align:left; font-size:12px; line-height:1.45;">
+                            <p>⚔️ <b>當前職業：</b><b id="skill-cur-cls-name" style="color:#b71c1c;">重裝劍士</b></p>
+                            <p style="margin-top:4px;">🌲 <b>5層分支技能樹：</b>右頁為分支技能樹，消耗技能點解鎖更強大的分支奧義！</p>
+                        </div>
+                        <div class="pd-belt-label">出戰技能欄 (最多 4 招，點擊圖示可卸下)</div>
+                        <div class="equipped-skill-row" id="book-equipped-skills"></div>
+                        <div class="quick-hint">🖱️ 點擊已裝配技能可卸下</div>
+                    </div>
+
+                    <div id="view-left-forge" class="book-view">
+                        <div class="book-section-hdr">🐻‍❄️ 鐵匠鍛造與藥水鍊金</div>
+                        <div class="smith-banner-card">
+                            <canvas id="smith-bear-canvas" width="48" height="48"></canvas>
+                            <div class="smith-dialog">
+                                <strong>工匠大熊老師：</strong>
+                                <p>「武器必須符合你的職業！快去右頁切換【武器】【護具】【飾品】部門打造神裝吧！」</p>
+                            </div>
+                        </div>
+                        <div class="pd-belt-label">📦 30 種書境素材庫存 (含 6 種稀有素材)</div>
+                        <div class="mat-stock-grid" id="book-mat-stock"></div>
+                    </div>
+
+                    <div id="view-left-guild" class="book-view">
+                        <div class="book-section-hdr">🔄 守護者轉職聖殿</div>
+                        <div class="passive-grid-box" style="padding:12px; line-height:1.5; text-align:left; font-size:12px;">
+                            <p>⚖️ <b>高階轉職法則：</b></p>
+                            <p>轉換職業流派將重塑靈魂契約，必須向時光聖殿獻上豐厚祭品：</p>
+                            <p style="margin:8px 0; color:#b71c1c; font-weight:900; font-size:13px;">💰 轉職費用：500 金幣 ＋ 💎 5 點技能點數</p>
+                            <p>轉職後將立即切換為該職業的專屬外觀、基礎成長與職業專屬武器限制！</p>
+                        </div>
+                        <div class="quick-hint">當前職業：<b id="guild-cur-class">重裝劍士</b></div>
+                    </div>
+
+                    <div id="view-left-mistake" class="book-view">
+                        <div class="book-section-hdr">🔮 知識錯題煉金術</div>
+                        <div class="passive-grid-box" style="padding:12px; line-height:1.5; text-align:left; font-size:12px;">
+                            <p>📘 <b>煉金規則：</b></p>
+                            <p>戰鬥中答錯不僅會損失該次攻擊機會，題目還會被封印在右頁的【錯題卷軸】中。</p>
+                            <p style="margin-top:6px; color:#2e7d32; font-weight:900;">✨ 在右頁重新答對錯題，即可煉化成【💎 技能點 +1】與【🟡 金幣 +30】！</p>
+                        </div>
+                        <div class="quick-hint">待煉化錯題：<b id="ui-mistake-count">0</b> 題</div>
+                    </div>
+
+                </div>
+
+                <div class="book-center-fold"></div>
+
+                <!-- ================= 右頁 ================= -->
+                <div class="book-page page-right">
+
+                    <div id="view-right-equip" class="book-view active">
+                        <div class="bag-top-bar">
+                            <div class="bag-title-pill" id="ui-bag-cat-title">1. 🗡️ 武器 (10/30格)</div>
+                            <button class="px-gold-btn" id="btn-expand-bag" style="padding:2px 8px; font-size:11px;">
+                                ➕ 擴充(+5格)
+                            </button>
+                        </div>
+                        <div class="bag-pentagon-tabs">
+                            <button class="pent-tab active" data-page="1" title="分頁 1：武器">1.武器</button>
+                            <button class="pent-tab" data-page="2" title="分頁 2：護具">2.護具</button>
+                            <button class="pent-tab" data-page="3" title="分頁 3：飾品">3.飾品</button>
+                            <button class="pent-tab" data-page="4" title="分頁 4：藥水">4.藥水</button>
+                            <button class="pent-tab" data-page="5" title="分頁 5：素材">5.素材</button>
+                        </div>
+                        <div class="bag-5x6-grid" id="book-bag-grid"></div>
+                        <div class="quick-hint" id="ui-bag-hint">🖱️ 點擊物品穿戴或使用，點 🔒 格仔可擴充容量</div>
+                    </div>
+
+                    <div id="view-right-skill" class="book-view">
+                        <div class="skill-tree-top-bar">
+                            <span class="skill-tree-title">🌿 5層分支戰鬥技能樹</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <span class="skill-pts-pill">💎 <b id="ui-sp-count">3</b>/30</span>
+                                <button class="px-gold-btn" id="btn-reset-skills" style="padding:2px 6px; font-size:10px;" title="重置已點數">🔄重置</button>
+                            </div>
+                        </div>
+                        <div class="skill-tree-canvas-wrap">
+                            <svg class="skill-tree-svg" viewBox="0 0 320 300" preserveAspectRatio="none">
+                                <line x1="80" y1="35" x2="80" y2="90" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="240" y1="35" x2="160" y2="90" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="240" y1="35" x2="240" y2="90" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="80" y1="90" x2="160" y2="150" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="240" y1="90" x2="240" y2="150" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="160" y1="150" x2="80" y2="210" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="240" y1="150" x2="160" y2="210" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="80" y1="210" x2="160" y2="270" stroke="#b89f80" stroke-width="4"/>
+                                <line x1="160" y1="210" x2="240" y2="270" stroke="#b89f80" stroke-width="4"/>
+                            </svg>
+                            <div class="skill-tree-nodes-layer" id="book-skill-tree-nodes"></div>
+                        </div>
+                    </div>
+
+                    <div id="view-right-forge" class="book-view">
+                        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; margin-bottom:6px;">
+                            <button class="px-orange-action-btn forge-cat-btn" data-fcat="weapon" style="padding:4px 2px; font-size:12px;">🗡️ 武器</button>
+                            <button class="px-orange-action-btn forge-cat-btn" data-fcat="armor" style="padding:4px 2px; font-size:12px;">🛡️ 護具</button>
+                            <button class="px-orange-action-btn forge-cat-btn" data-fcat="relic" style="padding:4px 2px; font-size:12px;">💍 飾品</button>
+                            <button class="px-gold-btn forge-cat-btn" data-fcat="potion" style="padding:4px 2px; font-size:12px;">⚗️ 煉藥</button>
+                        </div>
+                        <div class="forge-recipe-list" id="book-forge-list"></div>
+                    </div>
+
+                    <div id="view-right-guild" class="book-view">
+                        <div class="book-section-hdr">⚔️ 選擇要轉換的職業流派</div>
+                        <div class="forge-recipe-list" id="book-guild-list"></div>
+                    </div>
+
+                    <div id="view-right-mistake" class="book-view">
+                        <div class="book-section-hdr">📝 待煉化的錯題卷軸</div>
+                        <div class="forge-recipe-list" id="book-mistake-list"></div>
+                    </div>
+
+                </div>
+
+                <div id="ui-item-tooltip" class="px-item-tooltip hidden">
+                    <button id="btn-close-tooltip" class="tt-close-x">✖</button>
+                    <div id="ui-tooltip-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         彈窗 2：戰鬥獲勝結算畫面
+         ========================================================== -->
+    <div id="modal-victory" class="px-overlay hidden">
+        <div class="vic-main-title" id="ui-vic-title">戰鬥獲勝</div>
+        <div class="vic-layout">
+            <div class="vic-left-col">
+                <div class="vic-avatar-frame">
+                    <canvas id="vic-hero-canvas" width="96" height="96"></canvas>
+                </div>
+                <div class="vic-exp-card">
+                    <div class="vic-label">獲得經驗值</div>
+                    <div class="vic-bar-bg">
+                        <div class="vic-bar-fill" id="vic-exp-bar" style="width: 45%;"></div>
+                        <span class="vic-bar-num" id="vic-exp-txt">60 / 150</span>
+                    </div>
+                    <div class="vic-coin-row">
+                        <span>🟡 +<b id="vic-gold-gain">45</b></span>
+                        <span>💎 技能點 +<b>1</b></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="vic-right-col">
+                <div class="vic-panel-consumed">
+                    <div class="vic-sub-header" id="ui-vic-sub-msg">獲得書境鍛造與煉藥素材</div>
+                    <div class="vic-consumed-row" id="vic-mat-drops"></div>
+                </div>
+                <div class="vic-panel-loot">
+                    <div class="vic-sub-header">獲得戰利品</div>
+                    <div class="vic-loot-grid" id="vic-loot-grid"></div>
+                </div>
+                <div class="vic-btn-row">
+                    <button class="px-orange-action-btn" id="btn-vic-forge">🔨 鍛造工坊</button>
+                    <button class="px-orange-action-btn" id="btn-vic-another">⚔️ 繼續尋敵</button>
+                    <button class="px-orange-action-btn" id="btn-vic-explore">🗺️ 返回地圖行走</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         彈窗 3：溫習答題詠唱面板 (新增 #ui-quiz-img-box 支援看圖填充與情境圖解！)
+         ========================================================== -->
+    <div id="modal-quiz" class="px-overlay hidden">
+        <div class="px-quiz-card">
+            <div class="quiz-header-bar">
+                <span id="ui-quiz-title">🔥 技能詠唱：火球術</span>
+                <div class="quiz-header-btns">
+                    <button class="px-blue-sq-btn" id="btn-quiz-5050" style="width:auto; padding:0 10px; font-size:12px; background:#7b1fa2;">💡 啟示</button>
+                    <button class="px-blue-sq-btn" id="btn-quiz-tts" style="width:auto; padding:0 10px; font-size:12px;">🔊 朗讀題目</button>
+                    <button class="px-blue-sq-btn" id="btn-quiz-cancel" style="background:#a93226;">✖</button>
+                </div>
+            </div>
+
+            <!-- 🖼️ 科學科看圖題 / 情境題 專屬彩色 SVG 圖解顯示框 -->
+            <div id="ui-quiz-img-box" class="quiz-img-container hidden"></div>
+
+            <div class="quiz-prompt-box" id="ui-quiz-prompt">題目載入中...</div>
+
+            <!-- 模式 A：4 選 1 選擇題區 -->
+            <div class="quiz-options-2x2" id="ui-quiz-options"></div>
+
+            <!-- 模式 B：英文科 Spelling 獨立字母格仔 ＋ 加大碼清晰字體鍵盤 -->
+            <div id="ui-quiz-spelling" class="hidden" style="display:flex; flex-direction:column; gap:8px;">
+                <div id="ui-spell-slots" class="spell-slots-box"></div>
+                <div id="ui-spell-chips" class="spell-big-kbd"></div>
+                <div class="spell-action-row">
+                    <div id="ui-spell-feedback" class="spell-feedback-txt">💡 請依序點擊字母填入上方格仔（點擊格仔可修改）</div>
+                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <button type="button" id="btn-spell-backspace" class="px-orange-action-btn spell-ctrl-btn">⌫ 退格</button>
+                        <button type="button" id="btn-spell-clear" class="px-return-btn spell-ctrl-btn">清空</button>
+                        <button type="button" id="btn-spell-submit" class="px-gold-btn spell-ctrl-btn" style="padding:6px 18px;">✅ 確認答案</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         彈窗 4：設定介面 (新增科學科第 2、3、8、9 課勾選與「全選科學」按鈕)
+         ========================================================== -->
+    <div id="modal-settings" class="px-overlay hidden">
+        <div class="px-quiz-card settings-modal-box">
+            <div class="quiz-header-bar">
+                <span>⚙️ 書境設定・中英科課題與題型選擇</span>
+                <button class="px-blue-sq-btn" id="btn-close-settings-x" style="background:#a93226;">✖</button>
+            </div>
+
+            <div class="settings-content">
+                <div class="set-block" style="display:grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap:8px; align-items:center;">
+                    <div>
+                        <label>🏷️ 守護者名稱：</label>
+                        <input type="text" id="inp-hero-name" value="Justin" maxlength="10" class="px-input" />
+                    </div>
+                    <div>
+                        <label>📘 中文出題模式：</label>
+                        <select id="sel-quiz-mode" class="px-select">
+                            <option value="mixed" selected>🎲 混合 (釋義選詞＋填充)</option>
+                            <option value="meaning">🔍 只出釋義選詞 (62題)</option>
+                            <option value="sentence">📝 只出例句填充 (124句)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>🔤 英文出題模式：</label>
+                        <select id="sel-eng-mode" class="px-select">
+                            <option value="mixed" selected>🎲 混合 (串字＋句子填充)</option>
+                            <option value="spelling">⌨️ 只出英文串字 (Spelling)</option>
+                            <option value="fill">📝 只出句子填充 (Fill-in)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="set-block">
+                    <div class="set-sub-header">
+                        <span>📚 選擇溫習科目與單元範圍（可混搭或單選一科）：</span>
+                        <div style="display:flex; gap:4px;">
+                            <button type="button" id="btn-check-all-chi" class="cls-pill">只選中文</button>
+                            <button type="button" id="btn-check-all-eng" class="cls-pill" style="background:#1565c0;">只選英文</button>
+                            <button type="button" id="btn-check-all-sci" class="cls-pill" style="background:#6a1b9a;">只選科學</button>
+                            <button type="button" id="btn-uncheck-all-units" class="cls-pill">清空</button>
+                        </div>
+                    </div>
+
+                    <div class="set-sub-grid" id="ui-subject-checks">
+                        <!-- 📘 中文科 6 課 -->
+                        <label><input type="checkbox" value="成語一" checked> 📘 成語一 (15詞)</label>
+                        <label><input type="checkbox" value="成語二" checked> 📘 成語二 (15詞)</label>
+                        <label><input type="checkbox" value="字詞一" checked> 📗 字詞一 (8詞)</label>
+                        <label><input type="checkbox" value="字詞三" checked> 📗 字詞三 (8詞)</label>
+                        <label><input type="checkbox" value="字詞五" checked> 📗 字詞五 (8詞)</label>
+                        <label><input type="checkbox" value="字詞六" checked> 📗 字詞六 (8詞)</label>
+
+                        <!-- 🔤 英文科 Unit 1 ~ Unit 3 -->
+                        <label style="color:#0d47a1;"><input type="checkbox" value="英文 Unit 1" checked> 🔤 英文 Unit 1 (16詞)</label>
+                        <label style="color:#0d47a1;"><input type="checkbox" value="英文 Unit 2" checked> 🔤 英文 Unit 2 (19詞)</label>
+                        <label style="color:#0d47a1;"><input type="checkbox" value="英文 Unit 3" checked> 🔤 英文 Unit 3 (11詞)</label>
+
+                        <!-- 🔬 科學科 4 課 (每課 30 題，共 120 題) -->
+                        <label style="color:#6a1b9a;"><input type="checkbox" value="科學 第2課" checked> 🔬 科學2:青春期變化(30題)</label>
+                        <label style="color:#6a1b9a;"><input type="checkbox" value="科學 第3課" checked> 🔬 科學3:應對青春期(30題)</label>
+                        <label style="color:#6a1b9a;"><input type="checkbox" value="科學 第8課" checked> 🔬 科學8:觀測天氣(30題)</label>
+                        <label style="color:#6a1b9a;"><input type="checkbox" value="科學 第9課" checked> 🔬 科學9:探索地貌(30題)</label>
+
+                        <!-- 🌍 人文科預留 -->
+                        <label style="color:#2e7d32;"><input type="checkbox" value="人文科"> 🌍 人文科 (預留)</label>
+                    </div>
+                </div>
+
+                <div class="set-block set-flex-between">
+                    <label><input type="checkbox" id="chk-bgm" checked> 🎵 音樂(BGM)</label>
+                    <label><input type="checkbox" id="chk-sfx" checked> 💥 音效(SFX)</label>
+                    <div>
+                        <span>粵語速：</span>
+                        <select id="sel-zh-speed" class="px-select" style="width:auto;">
+                            <option value="0.75">0.75x</option>
+                            <option value="1.0" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span>英語速：</span>
+                        <select id="sel-en-speed" class="px-select" style="width:auto;">
+                            <option value="0.6">0.6x 慢速</option>
+                            <option value="0.8" selected>0.8x 清晰</option>
+                            <option value="1.0">1.0x 正常</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="set-block set-app-bar">
+                    <button type="button" class="px-blue-action-btn" id="btn-install-app">📲 安裝 App 到主畫面</button>
+                    <button type="button" class="px-orange-action-btn" id="btn-force-update">🔄 檢查並更新最新版本</button>
+                    <button type="button" class="px-blue-action-btn" id="btn-settings-fullscreen">⛶ 全螢幕切換</button>
+                </div>
+            </div>
+
+            <div class="settings-footer">
+                <button class="px-gold-btn btn-save-large" id="btn-save-settings">💾 儲存設定並返回遊戲</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 預先載入科學科 120 題獨立題庫 (即使檔案尚未建立亦不會影響主程式運行) -->
+<script type="module" src="./src/data/questions_sci.js"></script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
